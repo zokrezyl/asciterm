@@ -9,6 +9,7 @@
 * And maybe display rich text
 * Display art
 * Display complex graphics etc
+* Do photo processing (if you know Darktable, running filters and displaying results in the terminal)
 
 
 ## How?
