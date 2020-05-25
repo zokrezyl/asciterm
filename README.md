@@ -2,7 +2,7 @@ For early suggestions, critics please add comments to https://github.com/zokrezy
 
 # ArtSciTerm: OpenGL Terminal 2.0 for Artists, Scientists and Engineers
 
-![screenshot](res/scr_shot.png | height=200)
+![screenshot](res/scr_shot.png | width=200)
 
 
 ## What kind of problems do I want to solve
