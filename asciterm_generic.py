@@ -14,7 +14,7 @@ from select import select
 
 from vterm import VTerm, VTermScreenCallbacks_s, VTermRect_s, VTermPos_s
 
-
+import queue
 
 from esc_seq_parser import BufferProcessor
 
@@ -197,6 +197,7 @@ class ArtSciTerm:
         self.handle_main_vbuffer()
 
     def __init__(self, args):
+        self.queue = queue.Queue()
         self.args = args
         self.finish = False
         self.scale = 2
@@ -298,9 +299,23 @@ class ArtSciTerm:
         self.cursor_position = [((3*x1 + x2)/4, y1), (x1, y2), (x2, y2), (x2, y1), (x1, y1)]
         self.handle_cursor_vbuffer()
 
+
+    def process_program(self, program):
+        pass
+
     def draw(self, event):
         gl.glDepthMask(gl.GL_FALSE)
         gl.glEnable(gl.GL_BLEND)
+
+        try:
+            (programs, buf) = self.queue.get(block=False)
+            for program in programs:
+                self.process_program(program)
+            self.vt.push(buf)
+            self.dirty = True
+        except queue.Empty as exc:
+            pass
+
         if self.dirty:
             self.process()
         self.dirty = False
@@ -374,10 +389,9 @@ class ArtSciTerm:
                         self.char_data += data
 
                     if time_now - self.last_time > 0.2 or data is None or len(self.char_data) > max_size:
-                        # BufferProcessor(self.char_data).process()
-                        terminal.vt.push(self.char_data)
+                        (programs, buf) = BufferProcessor(self.char_data).process()
+                        self.queue.put((programs, buf))
                         self.char_data = bytes()
-                        self.dirty = True
                         terminal.update()
                         self.last_time = time_now
                     if data is None:
