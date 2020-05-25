@@ -16,7 +16,7 @@ class ArtSciTermVispy(app.Canvas, ArtSciTerm):
         self.app.run()
 
     def create_timer(self, interval):
-        self.timer = app.Timer(interval=0.2, connect=self.on_timer, start=True)
+        self.timer = app.Timer(interval='auto', connect=self.on_timer, start=True)
 
     def handle_main_vbuffer(self):
         self.program.bind(self.gloo.VertexBuffer(self.vbuffer))
@@ -41,8 +41,11 @@ class ArtSciTermVispy(app.Canvas, ArtSciTerm):
         self.width, self.height = event.size
         self.adapt_to_dim(self.width, self.height)
 
+    def on_mouse_move(self, event):
+        self.mouse = event.pos
+
     def on_timer(self, event):
-        self.program1['time'] = event.elapsed*5
+        self.time = event.elapsed
         self.update()
 
     def on_mouse_wheel(self, event):
@@ -58,3 +61,19 @@ class ArtSciTermVispy(app.Canvas, ArtSciTerm):
     def on_draw(self, event):
         self.gloo.clear('black')
         self.draw(event)
+
+    def program_get_uniforms(self, program):
+        uniforms = []
+        for variable in program.variables:
+            if variable[0] == 'uniform':
+                uniforms.append((variable[2], variable[1]))
+        return uniforms
+
+    def program_get_attributes(self, program):
+        attributes = []
+        for variable in program.variables:
+            if variable.kind == 'attribute':
+               attributesuniforms.append((variable[2], variable[1]))
+
+        return attributes
+

@@ -14,15 +14,18 @@ void main()
 """
 
 fragment_shader = """
-uniform vec2 resolution;
 uniform vec2 center;
-uniform float scale;
+uniform vec2 mouse;
+
+uniform float time;
 
 vec3 hot(float t)
 {
-    return vec3(smoothstep(0.00,0.33,t),
-                smoothstep(0.33,0.66,t),
-                smoothstep(0.66,1.00,t));
+    float retime = 100;
+
+    return vec3(sin(4*retime/7)*smoothstep(0.00,0.33,t),
+                sin(4*retime/5)*smoothstep(0.33,0.66,t),
+                sin(4*retime/3)*smoothstep(0.66,1.00,t));
 }
 
 void main()
@@ -32,9 +35,17 @@ void main()
 
     vec2 c;
 
+    float rescale;
+    //rescale = 0.2*sin(time/17);
+    rescale = 1;
+
+    //vec2 center = vec2(2*sin(2*time)*center.x, 3*sin(3*time)*center.y);
+    vec2 center = mouse;
+
+
     // Recover coordinates from pixel coordinates
-    c.x = (gl_FragCoord.x / resolution.x - 0.5) * scale + center.x;
-    c.y = (gl_FragCoord.y / resolution.y - 0.5) * scale + center.y;
+    c.x = (gl_FragCoord.x / 1000 ) * rescale - center.x + 0.5;
+    c.y = (gl_FragCoord.y / 1000 ) * rescale - center.y;
 
     float x, y, d;
     int i;
@@ -88,17 +99,12 @@ def main():
     attributes = msgpack.packb({
             "position": [(-1, -1), (-1, 1), (1, 1),
                                     (-1, -1), (1, 1), (1, -1)]})
-    uniforms = msgpack.packb({
-            "scale": 3,
-            "center": [-0.5, 0],
-            "resolution": [200, 200]})
 
     print(envelope(
-        rows=7,
+        rows=1,
         vertex_shader=vertex_shader,
         fragment_shader=fragment_shader,
-        attributes=attributes,
-        uniforms=uniforms), end="")
+        attributes=attributes), end="")
 
 
 

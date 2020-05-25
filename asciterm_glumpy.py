@@ -34,6 +34,9 @@ class ArtSciTermGlumpy(ArtSciTerm):
     def handle_main_vbuffer(self):
         pass
 
+    def on_mouse_motion(self, x, y, dx, dy):
+        self.mouse = (x, y)
+
     def handle_cursor_vbuffer(self):
         self.program1['position'] = self.cursor_position
 
@@ -69,3 +72,8 @@ class ArtSciTermGlumpy(ArtSciTerm):
         self.program.bind(self.vbuffer)
         print("adapt_vbuffer")
 
+    def program_get_uniforms(self, program):
+        return program.all_uniforms
+
+    def program_get_attributes(self, program):
+        return program.all_attributes

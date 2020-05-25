@@ -175,6 +175,7 @@ class ArtSciVTerm(VTerm):
 class ArtSciTerm:
 
     def adapt_to_dim(self, width, height):
+        self.mouse = (0, 0)
         self.width = width
         self.height = height
         self.cols = width  // int(self.char_width * self.scale)
@@ -198,6 +199,7 @@ class ArtSciTerm:
         self.handle_main_vbuffer()
 
     def __init__(self, args):
+        self.start_time = time.time()
         self.programs = []
         self.queue = queue.Queue()
         self.args = args
@@ -216,7 +218,7 @@ class ArtSciTerm:
         self.char_height = 13.0
 
         self.program = self.gloo.Program(vertex, fragment)
-        self.program1 = self.gloo.Program(vertex1, fragment1, count=6)
+        self.program1 = self.gloo.Program(vertex1, fragment1, count=5)
         self.program1["scale"]= self.scale
 
         # self.program2 = self.gloo.Program(vertex2, fragment2, count=4)
@@ -316,6 +318,7 @@ class ArtSciTerm:
         if "attributes" in program:
             attributes = msgpack.unpackb(base64.b64decode(program["attributes"].encode('ascii')))
 
+        # inject the time uniform
         program = self.gloo.Program(vertex_shader, fragment_shader)
 
         for key, value in attributes.items():
@@ -324,9 +327,23 @@ class ArtSciTerm:
         for key, value in uniforms.items():
             program[key.decode('ascii')] = value
 
+        has_time = False
+        has_mouse = False
+        for uniform in self.program_get_uniforms(program):
+            if 'time' == uniform[0]:
+                has_time = True
+            if 'mouse' == uniform[0]:
+                has_mouse = True
+
+        setattr(program, "has_time", has_time)
+        setattr(program, "start_time", time.time())
+        setattr(program, "has_mouse", has_mouse)
+
         self.programs.append(program)
 
     def draw(self, event):
+        time_now = time.time()
+        time_elapsed = time_now - self.start_time
         gl.glDepthMask(gl.GL_FALSE)
         gl.glEnable(gl.GL_BLEND)
 
@@ -334,12 +351,18 @@ class ArtSciTerm:
             self.process()
         self.dirty = False
 
-        #TODO .. look into vispy/gloo/wrappers.py to use vispy functions
+        self.program1['time'] = time_elapsed*5
+        # TODO .. look into vispy/gloo/wrappers.py to use vispy functions
         gl.glBlendFuncSeparate(gl.GL_ONE,  gl.GL_ONE,
                             gl.GL_ZERO, gl.GL_ONE_MINUS_SRC_ALPHA)
 
-        #self.window.clear()
+        # self.window.clear()
         for program in self.programs:
+            if program.has_time:
+                program['time'] = time_now - program.start_time
+            if program.has_mouse:
+                mouse = (2*self.mouse[0]/self.width - 1, 1 - 2*self.mouse[1]/self.height )
+                program['mouse'] = mouse
             program.draw()
 
         self.program.draw(self.get_gl_detail('points'))
