@@ -217,8 +217,8 @@ class ArtSciTerm:
         self.char_width = 6.0
         self.char_height = 13.0
 
-        self.program = self.gloo.Program(vertex, fragment)
-        self.program1 = self.gloo.Program(vertex1, fragment1, count=5)
+        self.program = self.Program(vertex, fragment)
+        self.program1 = self.Program(vertex1, fragment1, count=5)
         self.program1["scale"]= self.scale
 
         # self.program2 = self.gloo.Program(vertex2, fragment2, count=4)
@@ -319,7 +319,7 @@ class ArtSciTerm:
             attributes = msgpack.unpackb(base64.b64decode(program["attributes"].encode('ascii')))
 
         # inject the time uniform
-        program = self.gloo.Program(vertex_shader, fragment_shader)
+        program = self.Program(vertex_shader, fragment_shader)
 
         for key, value in attributes.items():
             program[key.decode('ascii')] = value
@@ -329,7 +329,7 @@ class ArtSciTerm:
 
         has_time = False
         has_mouse = False
-        for uniform in self.program_get_uniforms(program):
+        for uniform in program.get_uniforms():
             if 'time' == uniform[0]:
                 has_time = True
             if 'mouse' == uniform[0]:

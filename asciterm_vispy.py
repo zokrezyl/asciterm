@@ -2,9 +2,27 @@ from asciterm_generic import ArtSciTerm
 from vispy import gloo, app, util
 import os
 
+class ArtSciTermVispyProgram(gloo.Program):
+    def get_uniforms(self):
+        uniforms = []
+        for variable in self.variables:
+            if variable[0] == 'uniform':
+                uniforms.append((variable[2], variable[1]))
+        return uniforms
+
+    def get_attributes(self):
+        attributes = []
+        for variable in self.variables:
+            if variable.kind == 'attribute':
+               attributesuniforms.append((variable[2], variable[1]))
+
+        return attributes
+
 
 class ArtSciTermVispy(app.Canvas, ArtSciTerm):
     def __init__(self, args, width, height, x=0, y=0, scale=2):
+        self.Program = ArtSciTermVispyProgram
+
         self.gloo = gloo
         self._app = app
         self.ortho = util.transforms.ortho
@@ -62,18 +80,4 @@ class ArtSciTermVispy(app.Canvas, ArtSciTerm):
         self.gloo.clear('black')
         self.draw(event)
 
-    def program_get_uniforms(self, program):
-        uniforms = []
-        for variable in program.variables:
-            if variable[0] == 'uniform':
-                uniforms.append((variable[2], variable[1]))
-        return uniforms
-
-    def program_get_attributes(self, program):
-        attributes = []
-        for variable in program.variables:
-            if variable.kind == 'attribute':
-               attributesuniforms.append((variable[2], variable[1]))
-
-        return attributes
 

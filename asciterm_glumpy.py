@@ -4,9 +4,17 @@ import numpy as np
 import os
 import time
 
+class ArtSciTermGlumpyProgram(gloo.Program):
+    def get_uniforms(self):
+        return self.all_uniforms
+
+    def get_attributes(self):
+        return self.all_attributes
 
 class ArtSciTermGlumpy(ArtSciTerm):
     def __init__(self, args, width, height, x=0, y=0, scale=2):
+        self.Program = ArtSciTermGlumpyProgram
+
         self.gloo = gloo
         self._app = app
         self.ortho = glm.ortho
@@ -72,8 +80,3 @@ class ArtSciTermGlumpy(ArtSciTerm):
         self.program.bind(self.vbuffer)
         print("adapt_vbuffer")
 
-    def program_get_uniforms(self, program):
-        return program.all_uniforms
-
-    def program_get_attributes(self, program):
-        return program.all_attributes
