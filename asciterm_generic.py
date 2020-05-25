@@ -1,11 +1,12 @@
 import os
-import sys 
 import tty
 import pty
 import time
 import fcntl
 import termios
 import array
+import msgpack
+import base64
 import threading
 import numpy as np
 from OpenGL import GL as gl
@@ -197,6 +198,7 @@ class ArtSciTerm:
         self.handle_main_vbuffer()
 
     def __init__(self, args):
+        self.programs = []
         self.queue = queue.Queue()
         self.args = args
         self.finish = False
@@ -214,7 +216,7 @@ class ArtSciTerm:
         self.char_height = 13.0
 
         self.program = self.gloo.Program(vertex, fragment)
-        self.program1 = self.gloo.Program(vertex1, fragment1, count=5)
+        self.program1 = self.gloo.Program(vertex1, fragment1, count=6)
         self.program1["scale"]= self.scale
 
         # self.program2 = self.gloo.Program(vertex2, fragment2, count=4)
@@ -301,29 +303,45 @@ class ArtSciTerm:
 
 
     def process_program(self, program):
-        pass
+        vertex_shader = None
+        fragment_shader = None
+        attributes = {}
+        uniforms = {}
+        if "vertex_shader" in program:
+            vertex_shader = base64.b64decode(program["vertex_shader"].encode('ascii')).decode('ascii')
+        if "fragment_shader" in program:
+            fragment_shader = base64.b64decode(program["fragment_shader"].encode('ascii')).decode('ascii')
+        if "uniforms" in program:
+            uniforms = msgpack.unpackb(base64.b64decode(program["uniforms"].encode('ascii')))
+        if "attributes" in program:
+            attributes = msgpack.unpackb(base64.b64decode(program["attributes"].encode('ascii')))
+
+        program = self.gloo.Program(vertex_shader, fragment_shader)
+
+        for key, value in attributes.items():
+            program[key.decode('ascii')] = value
+
+        for key, value in uniforms.items():
+            program[key.decode('ascii')] = value
+
+        self.programs.append(program)
 
     def draw(self, event):
         gl.glDepthMask(gl.GL_FALSE)
         gl.glEnable(gl.GL_BLEND)
 
-        try:
-            (programs, buf) = self.queue.get(block=False)
-            for program in programs:
-                self.process_program(program)
-            self.vt.push(buf)
-            self.dirty = True
-        except queue.Empty as exc:
-            pass
-
         if self.dirty:
             self.process()
         self.dirty = False
+
         #TODO .. look into vispy/gloo/wrappers.py to use vispy functions
         gl.glBlendFuncSeparate(gl.GL_ONE,  gl.GL_ONE,
                             gl.GL_ZERO, gl.GL_ONE_MINUS_SRC_ALPHA)
 
         #self.window.clear()
+        for program in self.programs:
+            program.draw()
+
         self.program.draw(self.get_gl_detail('points'))
 
         gl.glEnable(gl.GL_BLEND)
@@ -332,6 +350,7 @@ class ArtSciTerm:
 
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFunc(gl.GL_ONE_MINUS_SRC_ALPHA, gl.GL_SRC_ALPHA)
+
 
     def process(self):
         """ Put text at (row,col) """
@@ -368,6 +387,7 @@ class ArtSciTerm:
         fds = [self.master_fd]
         self.last_time = time.time()
         max_size = 1024*1024
+        char_data = bytes()
         while True:
             rfds, _, _ = select(fds, [], [])
             try:
@@ -386,12 +406,15 @@ class ArtSciTerm:
                     except:
                         data = None
                     if data is not None:
-                        self.char_data += data
+                        char_data += data
 
-                    if time_now - self.last_time > 0.2 or data is None or len(self.char_data) > max_size:
-                        (programs, buf) = BufferProcessor(self.char_data).process()
-                        self.queue.put((programs, buf))
-                        self.char_data = bytes()
+                    if time_now - self.last_time > 0.2 or data is None or len(char_data) > max_size:
+                        (programs, buf) = BufferProcessor(char_data).process()
+                        self.vt.push(buf)
+                        for program in programs:
+                            self.process_program(program)
+                        char_data = bytes()
+                        self.dirty = True
                         terminal.update()
                         self.last_time = time_now
                     if data is None:

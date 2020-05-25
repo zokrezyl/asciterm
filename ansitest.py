@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import base64
+import msgpack
 
 # Shader source code: from https://github.com/vispy/vispy/blob/master/examples/demo/gloo/mandelbrot.py
 # -----------------------------------------------------------------------------
@@ -26,7 +27,6 @@ vec3 hot(float t)
 
 void main()
 {
-    
     const int n = 300;
     const float log_2 = 0.6931471805599453;
 
@@ -63,7 +63,7 @@ def transcode(what):
     return base64.b64encode(what.encode('ascii')).decode('ascii')
 
 def envelope(rows=12, vertex_shader=None, fragment_shader=None,
-             attributes=None, varyings=None):
+             attributes=None, uniforms=None):
 
     ret = f"\033_Arows={rows}"
     if vertex_shader:
@@ -73,20 +73,31 @@ def envelope(rows=12, vertex_shader=None, fragment_shader=None,
         ret += f",fragment_shader='{transcode(fragment_shader)}'"
 
     if attributes:
-        ret += f",attributes={base64.b64encode(attributes)}"
+        ret += f",attributes='{base64.b64encode(attributes).decode('ascii')}'"
 
-    if varyings:
-        ret += f",varyings={base64.b64encode(varyings)}"
+    if uniforms:
+        ret += f",uniforms='{base64.b64encode(uniforms).decode('ascii')}'"
 
     ret += "\033\\"
 
     return ret
 
 
-
 def main():
-    print(envelope(vertex_shader=vertex_shader,
-            fragment_shader=fragment_shader), end="")
+
+    attributes = msgpack.packb({
+            "position": [(-1, -1), (-1, 1), (1, 1),
+                                    (-1, -1), (1, 1), (1, -1)]})
+    uniforms = msgpack.packb({
+            "scale": 3,
+            "center": [-0.5, 0],
+            "resolution": [200, 200]})
+
+    print(envelope(
+        vertex_shader=vertex_shader,
+        fragment_shader=fragment_shader,
+        attributes=attributes,
+        uniforms=uniforms), end="")
 
 
 

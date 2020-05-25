@@ -152,7 +152,6 @@ class BufferProcessor:
     def process(self):
         """ we are looking for sequences with escape codes like <ESC>_A<key1>=<value1>,<key2>=<value2><ESC>\
         """
-        print(self.buf)
         ret = bytes()
         programs = []
         prev = 0
@@ -161,13 +160,11 @@ class BufferProcessor:
             if token[0] == TOKEN_EOB:
                 ret += self.buf[prev: self.tokenizer.pos]
                 return (programs, ret)
-            print("found start program")
             ret += self.buf[prev: self.tokenizer.pos]
             try:
                 program = self.process_program()
                 if "rows" in program:
                     ret += ("\n"*program["rows"]).encode('ascii')
-                print("new program ", program)
                 prev = self.tokenizer.pos
                 programs.append(program)
             except Exception as e:
