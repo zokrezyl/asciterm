@@ -1,5 +1,11 @@
+""" 
+based on https://github.com/powerline/powerline/blob/master/tests/modules/lib/vterm.py
+see LICENSE in the same  folder
+"""
+
 import subprocess
 import os
+
 
 from ctypes import (
     c_void_p,
