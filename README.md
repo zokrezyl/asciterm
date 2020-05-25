@@ -2,6 +2,8 @@ For early suggestions, critics please add comments to https://github.com/zokrezy
 
 # ArtSciTerm: OpenGL Terminal 2.0 for Artists, Scientists and Engineers
 
+![screenshot](res/scr_shot.png)
+
 
 ## What kind of problems do I want to solve
 * create a rich terminal like iPython/Jupyter where
