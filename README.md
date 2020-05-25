@@ -1,4 +1,6 @@
-# ArtSciTerm: Terminal 2.0 for Artists, Scientists and Engineers
+For early suggestions, critics please add comments to https://github.com/zokrezyl/asciterm/issues/2
+
+# ArtSciTerm: OpenGL Terminal 2.0 for Artists, Scientists and Engineers
 
 
 ## What kind of problems do I want to solve
