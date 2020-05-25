@@ -94,11 +94,11 @@ def main():
             "resolution": [200, 200]})
 
     print(envelope(
+        rows=7,
         vertex_shader=vertex_shader,
         fragment_shader=fragment_shader,
         attributes=attributes,
         uniforms=uniforms), end="")
-
 
 
 
