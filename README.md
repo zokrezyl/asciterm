@@ -7,7 +7,7 @@ For early suggestions, critics please add comments to https://github.com/zokrezy
 
 ## What kind of problems do I want to solve
 * create a rich terminal like iPython/Jupyter where
-* I can instantly see graphics/visuals
+* I can instantly visualise graphs, charts, rich text
 * That can render fast
 * Without leaving the terminal
 * And maybe display rich text
