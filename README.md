@@ -3,11 +3,11 @@ For early suggestions, critics please add comments to https://github.com/zokrezy
 # ArtSciTerm: OpenGL Terminal 2.0 for Artists, Scientists and Engineers
 
 ![screenshot](res/scr_shot.png)
-
+![cucu](https://github.com/zokrezyl/asciterm/blob/master/demo.mp4?raw=true)
 
 ## What kind of problems do I want to solve
 * create a rich terminal like iPython/Jupyter where
-* I can instantly see graphics/visuals
+* I can instantly visualise graphs, charts, rich text
 * That can render fast
 * Without leaving the terminal
 * And maybe display rich text
