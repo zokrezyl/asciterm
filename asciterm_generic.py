@@ -181,8 +181,8 @@ class ArtSciTerm:
         self.cols = width  // int(self.char_width * self.scale)
         self.rows = height // int(self.char_height * self.scale)
         self.program["cols"] = self.cols
-
-        self.vt.resize(self.rows, self.cols)
+        with self.vt_lock:
+            self.vt.resize(self.rows, self.cols)
         if self.master_fd:
             buf = array.array('h', [self.rows, self.cols, 0, 0])
             fcntl.ioctl(self.master_fd, termios.TIOCSWINSZ, buf)
@@ -212,6 +212,7 @@ class ArtSciTerm:
         self.master_fd = None
 
         self.vt = ArtSciVTerm(args[0].libvterm_path, 100, 100, self)
+        self.vt_lock = threading.Lock()
 
         self.scale = 2
         self.char_width = 6.0
@@ -286,7 +287,7 @@ class ArtSciTerm:
         gl.glEnable(gl.GL_VERTEX_PROGRAM_POINT_SIZE)
         gl.glEnable(gl.GL_POINT_SPRITE)
 
-        threading.Thread(target=self.pty_function, args=(self,)).start()
+        threading.Thread(target=self.pty_function).start()
 
     def on_cursor_move(self):
         x1 = self.cursor_pos.col * self.char_width * 1.0
@@ -378,8 +379,9 @@ class ArtSciTerm:
     def process(self):
         """ Put text at (row,col) """
 
-        buf = np.ctypeslib.as_array(self.vt.screen.contents.buffer, (self.rows*self.cols, ))
-        codes = buf["chars"][:,0:1].reshape((self.rows*self.cols))
+        with self.vt_lock:
+            buf = np.ctypeslib.as_array(self.vt.screen.contents.buffer, (self.rows*self.cols, ))
+            codes = buf["chars"][:,0:1].reshape((self.rows*self.cols))
 
         self.vbuffer["pindex"] = np.arange(self.rows*self.cols)
         self.vbuffer["gindex"] = 2  # index of space in our font
@@ -389,7 +391,8 @@ class ArtSciTerm:
         self.vbuffer['bg'] = buf['bg']/255
         self.handle_main_vbuffer()
 
-    def pty_function(self, terminal):
+
+    def pty_function(self):
         shell = os.environ.get('SHELL', 'sh')
         pid, self.master_fd = pty.fork()
         if pid == 0:  # CHILD
@@ -433,12 +436,13 @@ class ArtSciTerm:
 
                     if time_now - self.last_time > 0.2 or data is None or len(char_data) > max_size:
                         (programs, buf) = BufferProcessor(char_data).process()
-                        self.vt.push(buf)
+                        with self.vt_lock:
+                            self.vt.push(buf)
                         for program in programs:
                             self.process_program(program)
                         char_data = bytes()
                         self.dirty = True
-                        terminal.update()
+                        self.update()
                         self.last_time = time_now
                     if data is None:
                         break

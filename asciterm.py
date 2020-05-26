@@ -122,7 +122,6 @@ def run(raw_args=None):
         parser.print_help()
         return 1
 
-    print(args)
     cmd = cmd_map[args[0].command]
     return cmd.run(args)
 

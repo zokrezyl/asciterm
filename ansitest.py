@@ -14,14 +14,13 @@ void main()
 """
 
 fragment_shader = """
-uniform vec2 center;
 uniform vec2 mouse;
 
 uniform float time;
 
 vec3 hot(float t)
 {
-    float retime = 100;
+    float retime = time;
 
     return vec3(sin(4*retime/7)*smoothstep(0.00,0.33,t),
                 sin(4*retime/5)*smoothstep(0.33,0.66,t),
@@ -35,17 +34,13 @@ void main()
 
     vec2 c;
 
-    float rescale;
-    //rescale = 0.2*sin(time/17);
-    rescale = 1;
-
-    //vec2 center = vec2(2*sin(2*time)*center.x, 3*sin(3*time)*center.y);
-    vec2 center = mouse;
-
+    float scale = 3;
+    vec2 center = vec2(0.9, 0.9);
+    center = vec2(2 + sin(time)*center.x, 2 + sin(time)*center.y);
 
     // Recover coordinates from pixel coordinates
-    c.x = (gl_FragCoord.x / 1000 ) * rescale - center.x + 0.5;
-    c.y = (gl_FragCoord.y / 1000 ) * rescale - center.y;
+    c.x = (gl_FragCoord.x / 1000 ) * scale - center.x;
+    c.y = (gl_FragCoord.y / 1000 ) * scale - center.y;
 
     float x, y, d;
     int i;
