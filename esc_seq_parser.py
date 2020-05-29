@@ -59,7 +59,7 @@ class Tokenizer:
         first = self.pos
         quote_open = self.buf[self.pos]
         self.pos += 1  # skip beginning of string
-        while (self.buf[self.pos] != quote_open) and self.pos < len(self.buf):
+        while self.pos < len(self.buf) and (self.buf[self.pos] != quote_open):
             self.pos += 1
         if self.pos == len(self.buf):
             raise Exception("string not ended")
@@ -106,6 +106,7 @@ class Tokenizer:
         if pos == -1:
             self.pos = len(self.buf)
             return (TOKEN_EOB, None)
+        self.pos = pos
         return (TOKEN_BEGIN_ASCITERM_SEQUENCE, BEGIN_ASCITERM_SEQUENCE)
 
 
@@ -116,10 +117,11 @@ class BufferProcessor:
         and so on...
 
     """
-    def __init__(self, buf):
-        self.buf = buf
-        self.tokenizer = Tokenizer(buf)
-        self.programs = []
+
+    magic_string = b"this-is-a-magic-string-for-whatever, id: "
+    magic_string_s = magic_string.decode('ascii')
+    def __init__(self):
+        self.last_program_id = 0
 
     def process_key_value(self):
         token = self.tokenizer.next_token()
@@ -135,37 +137,52 @@ class BufferProcessor:
         value = token[1]
         return (key, value)
 
-    def process_program(self):
-        program = {}
+    def process_cmd(self):
+        cmd = {}
         token = self.tokenizer.next_token()
         if token[0] != TOKEN_BEGIN_ASCITERM_SEQUENCE:
             raise Exception("expected begin asciterm sequence")
         while True:
             (key, value) = self.process_key_value()
-            program[key] = value
+            cmd[key] = value
             token = self.tokenizer.next_token()
             if token[0] == TOKEN_END_ASCITERM_SEQUENCE:
-                return program
+                return cmd
             if token[0] != TOKEN_COMMA:
                 raise Exception(f"unexpected token, got {token_dict[token[0]]}, expected {token_dict[TOKEN_COMMA]} {token[1]}")
 
-    def process(self):
+    def process(self, buf):
         """ we are looking for sequences with escape codes like <ESC>_A<key1>=<value1>,<key2>=<value2><ESC>\
         """
+        self.buf = buf
+        self.tokenizer = Tokenizer(buf)
+        self.cmds = []
+
         ret = bytes()
-        programs = []
+
+        cmds = []
         prev = 0
         while True:
             token = self.tokenizer.find_next_begin_token()
             if token[0] == TOKEN_EOB:
                 ret += self.buf[prev: self.tokenizer.pos]
-                return (programs, ret)
+                return (cmds, ret)
             ret += self.buf[prev: self.tokenizer.pos]
+            print("found cmd at ", self.tokenizer.pos)
             try:
-                program = self.process_program()
-                if "rows" in program:
-                    ret += ("\n"*program["rows"]).encode('ascii')
-                prev = self.tokenizer.pos
-                programs.append(program)
+                cmd = self.process_cmd()
+                if "cmd" in cmd:
+                    if cmd["cmd"] == "create" and "rows" in cmd:
+                        #ret += ("\n"*cmd["rows"]).encode('ascii')
+                        # We are insert this fake string as place marker for the cmd
+                        # when we draw a new screen we will hunt for these strings in the vterm 
+                        # and replace them with blanks and display over it the program
+                        ret += (f"{self.magic_string_s}{self.last_program_id:08}\r\n"\
+                                *cmd["rows"]).encode('ascii')
+                        cmd["internal_id"] = self.last_program_id
+                        self.last_program_id += 1
+                    prev = self.tokenizer.pos
+                    cmds.append(cmd)
             except Exception as e:
-                print("exception", e, self.tokenizer.pos)
+                raise e
+                #TODO .. log print("exception ++", e, self.tokenizer.pos)
