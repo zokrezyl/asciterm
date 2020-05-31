@@ -4,6 +4,10 @@ import numpy as np
 import os
 import time
 
+
+class Null:
+    pass
+
 class ArtSciTermGlumpyProgram(gloo.Program):
     def get_uniforms(self):
         return self.all_uniforms
@@ -13,11 +17,13 @@ class ArtSciTermGlumpyProgram(gloo.Program):
 
 class ArtSciTermGlumpy(ArtSciTerm):
     def __init__(self, args, width, height, x=0, y=0, scale=2):
-        self.Program = ArtSciTermGlumpyProgram
 
-        self.gloo = gloo
-        self._app = app
-        self.ortho = glm.ortho
+        self.factory = Null()
+        setattr(self.factory, "create_program", ArtSciTermGlumpyProgram)
+        setattr(self.factor, "ortho", glm.ortho)
+
+        #self.gloo = gloo
+        #self._app = app
         ArtSciTerm.__init__(self, args)
 
     def run(self):
@@ -60,7 +66,7 @@ class ArtSciTermGlumpy(ArtSciTerm):
         self.draw(event)
 
     def on_resize(self, width, height):
-        self.adapt_to_dim(width, height)
+        self._on_resize(width, height)
 
     def on_character(self, text):
         print(text)
@@ -76,7 +82,12 @@ class ArtSciTermGlumpy(ArtSciTerm):
 
 
     def adapt_vbuffer(self):
-        self.vbuffer = self.vbuffer.view(self.gloo.VertexBuffer)
+        self.vbuffer = self.vbuffer.view(gloo.VertexBuffer)
         self.program.bind(self.vbuffer)
         print("adapt_vbuffer")
+    
+    def quit(self):
+        print("quitting")
+        app.quit()
+        self.finish = True
 

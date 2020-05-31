@@ -2,6 +2,9 @@ from asciterm_generic import ArtSciTerm
 from vispy import gloo, app, util
 import os
 
+class Null:
+    pass
+
 class ArtSciTermVispyProgram(gloo.Program):
     def get_uniforms(self):
         uniforms = []
@@ -21,11 +24,12 @@ class ArtSciTermVispyProgram(gloo.Program):
 
 class ArtSciTermVispy(app.Canvas, ArtSciTerm):
     def __init__(self, args, width, height, x=0, y=0, scale=2):
-        self.Program = ArtSciTermVispyProgram
+        self.factory = Null()
+        setattr(self.factory, "create_program", ArtSciTermVispyProgram)
+        setattr(self.factory, "ortho",  util.transforms.ortho)
 
-        self.gloo = gloo
-        self._app = app
-        self.ortho = util.transforms.ortho
+        #self.gloo = gloo
+        #self._app = app
         app.Canvas.__init__(self)
         ArtSciTerm.__init__(self, args)
 
@@ -37,13 +41,13 @@ class ArtSciTermVispy(app.Canvas, ArtSciTerm):
         self.timer = app.Timer(interval='auto', connect=self.on_timer, start=True)
 
     def handle_main_vbuffer(self):
-        self.program.bind(self.gloo.VertexBuffer(self.vbuffer))
+        self.program.bind(gloo.VertexBuffer(self.vbuffer))
 
     def handle_cursor_vbuffer(self):
-        self.program1["position"] = self.gloo.VertexBuffer(self.cursor_position)
+        self.program1["position"] = gloo.VertexBuffer(self.cursor_position)
 
     def as_texture_2d(self, data):
-        return self.gloo.Texture2D(data)
+        return gloo.Texture2D(data)
 
     def on_key_press(self, event):
         os.write(self.master_fd, str.encode(event.text))
@@ -57,7 +61,7 @@ class ArtSciTermVispy(app.Canvas, ArtSciTerm):
 
     def on_resize(self, event):
         self.width, self.height = event.size
-        self.adapt_to_dim(self.width, self.height)
+        self._on_resize(self.width, self.height)
 
     def on_mouse_move(self, event):
         self.mouse = event.pos
@@ -77,7 +81,8 @@ class ArtSciTermVispy(app.Canvas, ArtSciTerm):
         self.dirty = True
 
     def on_draw(self, event):
-        self.gloo.clear('black')
+        gloo.clear('black')
         self.draw(event)
 
-
+    def quit(self):
+        app.quit()

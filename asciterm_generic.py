@@ -5,8 +5,6 @@ import time
 import fcntl
 import termios
 import array
-import msgpack
-import base64
 import threading
 import numpy as np
 from OpenGL import GL as gl
@@ -18,6 +16,7 @@ from vterm import VTerm, VTermScreenCallbacks_s, VTermRect_s, VTermPos_s
 import queue
 
 from esc_seq_parser import BufferProcessor
+from progman import ProgramManager
 
 vertex = """
 #version 120
@@ -176,8 +175,7 @@ class ArtSciTerm:
 
     def adapt_to_dim(self, width, height):
         self.mouse = (0, 0)
-        self.width = width
-        self.height = height
+        self.width, self.height = width, height
         self.cols = width  // int(self.char_width * self.scale)
         self.rows = height // int(self.char_height * self.scale)
         self.program["cols"] = self.cols
@@ -193,33 +191,36 @@ class ArtSciTerm:
                                              ("gindex", np.float32, 1),
                                              ("fg", np.float32, 4),
                                              ("bg", np.float32, 4)])
-        self.program["projection"] = self.ortho(0, width, height, 0, -1, +1)
+        self.program["projection"] = self.factory.ortho(0, width, height, 0, -1, +1)
+
+        self.progman.on_screen_size_change(self.scale, self.cols, self.rows, width, height)
+
         self.adapt_vbuffer()
 
         self.handle_main_vbuffer()
 
     def __init__(self, args):
+        self.width = 0
+        self.height = 0
+        self.scale = 2
+        self.char_width = 6.0
+        self.char_height = 13.0
         self.start_time = time.time()
-        self.programs = []
         self.queue = queue.Queue()
         self.args = args
         self.finish = False
-        self.scale = 2
         self.dirty = True
         self.cursor_pos = VTermPos_s(0,0)
-        self.mouse_wheel = 0
         self.char_data = bytes()
         self.master_fd = None
 
         self.vt = ArtSciVTerm(args[0].libvterm_path, 100, 100, self)
         self.vt_lock = threading.Lock()
+        self.progman_lock = threading.Lock()
 
-        self.scale = 2
-        self.char_width = 6.0
-        self.char_height = 13.0
 
-        self.program = self.Program(vertex, fragment)
-        self.program1 = self.Program(vertex1, fragment1, count=5)
+        self.program = self.factory.create_program(vertex, fragment)
+        self.program1 = self.factory.create_program(vertex1, fragment1, count=5)
         self.program1["scale"]= self.scale
 
         # self.program2 = self.gloo.Program(vertex2, fragment2, count=4)
@@ -247,7 +248,12 @@ class ArtSciTerm:
         font[n1+n2:n1+n2+n3]["code"] += 2*65536
         font["data"][0] = font["data"][1] #we set the character of space for zero
 
+        self.progman = ProgramManager(self.factory, self.width,
+                self.height, self.char_width, self.char_height)
+
+        self.buffer_processor = BufferProcessor()
         self.adapt_to_dim(300, 300)
+
 
         # Build a texture out of glyph arrays (need to unpack bits)
         # This code is specific for a character size of 6x13
@@ -289,58 +295,20 @@ class ArtSciTerm:
 
         threading.Thread(target=self.pty_function).start()
 
+    def _on_resize(self, width, height):
+        self.adapt_to_dim(width, height)
+
     def on_cursor_move(self):
-        x1 = self.cursor_pos.col * self.char_width * 1.0
-        y1 = (self.rows - self.cursor_pos.row) * self.char_height * 1.0 - self.char_height/4.0
+        x1 = 2 * self.cursor_pos.col / self.cols - 1
+        y1 = 1 - 2 * (self.cursor_pos.row + 0.7)/ self.rows
 
-        x2 = (self.cursor_pos.col + 1)* self.char_width
-        y2 = (self.rows - self.cursor_pos.row - 1)* self.char_height * 1.0 - self.char_height/4.0
-
-        x1 = 2*x1*self.scale/self.width - 1
-        x2 = 2*x2*self.scale/self.width - 1
-        y1 = 2*y1*self.scale/self.height - 1
-        y2 = 2*y2*self.scale/self.height - 1
+        x2 = x1 - 2 * self.scale * self.char_width / self.width
+        y2 = y1 - 2 * self.scale * self.char_height / self.height
 
         self.cursor_position = [((3*x1 + x2)/4, y1), (x1, y2), (x2, y2), (x2, y1), (x1, y1)]
         self.handle_cursor_vbuffer()
 
 
-    def process_program(self, program):
-        vertex_shader = None
-        fragment_shader = None
-        attributes = {}
-        uniforms = {}
-        if "vertex_shader" in program:
-            vertex_shader = base64.b64decode(program["vertex_shader"].encode('ascii')).decode('ascii')
-        if "fragment_shader" in program:
-            fragment_shader = base64.b64decode(program["fragment_shader"].encode('ascii')).decode('ascii')
-        if "uniforms" in program:
-            uniforms = msgpack.unpackb(base64.b64decode(program["uniforms"].encode('ascii')))
-        if "attributes" in program:
-            attributes = msgpack.unpackb(base64.b64decode(program["attributes"].encode('ascii')))
-
-        # inject the time uniform
-        program = self.Program(vertex_shader, fragment_shader)
-
-        for key, value in attributes.items():
-            program[key.decode('ascii')] = value
-
-        for key, value in uniforms.items():
-            program[key.decode('ascii')] = value
-
-        has_time = False
-        has_mouse = False
-        for uniform in program.get_uniforms():
-            if 'time' == uniform[0]:
-                has_time = True
-            if 'mouse' == uniform[0]:
-                has_mouse = True
-
-        setattr(program, "has_time", has_time)
-        setattr(program, "start_time", time.time())
-        setattr(program, "has_mouse", has_mouse)
-
-        self.programs.append(program)
 
     def draw(self, event):
         time_now = time.time()
@@ -349,7 +317,12 @@ class ArtSciTerm:
         gl.glEnable(gl.GL_BLEND)
 
         if self.dirty:
-            self.process()
+            try:
+                self.process()
+            except Exception as exc:
+                print("exception ... ", exc)
+                return
+
         self.dirty = False
 
         self.program1['time'] = time_elapsed*5
@@ -358,13 +331,15 @@ class ArtSciTerm:
                             gl.GL_ZERO, gl.GL_ONE_MINUS_SRC_ALPHA)
 
         # self.window.clear()
-        for program in self.programs:
-            if program.has_time:
-                program['time'] = time_now - program.start_time
-            if program.has_mouse:
-                mouse = (2*self.mouse[0]/self.width - 1, 1 - 2*self.mouse[1]/self.height )
-                program['mouse'] = mouse
-            program.draw()
+        with self.progman_lock:
+            for internal_id, program in self.progman.programs.items():
+                if program.has_time:
+                    program['time'] = time_now - program.start_time
+                if program.has_mouse:
+                    mouse = (2*self.mouse[0]/self.width - 1, 1 - 2*self.mouse[1]/self.height )
+                    program['mouse'] = mouse
+                if program.active:
+                    program.draw(program.draw_mode)
 
         self.program.draw(self.get_gl_detail('points'))
 
@@ -382,6 +357,48 @@ class ArtSciTerm:
         with self.vt_lock:
             buf = np.ctypeslib.as_array(self.vt.screen.contents.buffer, (self.rows*self.cols, ))
             codes = buf["chars"][:,0:1].reshape((self.rows*self.cols))
+        # 
+        as_str = codes.astype('b').tostring()
+        magic_pos = 0
+        first_magic_pos = -1
+        prev_prog_id = -1
+        prog_id = -1
+        prog_positions = {}
+        codes = codes.copy()
+        magic_rows = 1
+        with self.progman_lock:
+            for internal_id, program in self.progman.programs.items():
+                program.active = False
+        print("processing...")
+        while True:
+            magic_pos = as_str.find(BufferProcessor.magic_string, magic_pos)
+            if (magic_pos != -1):
+                int_pos = magic_pos + len(BufferProcessor.magic_string)
+                prog_id = int(as_str[int_pos: int_pos+8].decode('ascii'))
+                if first_magic_pos == -1:
+                    first_magic_pos = magic_pos
+                if prog_id == prev_prog_id:
+                    magic_rows += 1
+
+            print(magic_pos, prog_id, prev_prog_id)
+            if magic_pos == -1 and prog_id == -1:
+                print("break 1")
+                break
+
+            if magic_pos == -1 or (prog_id != prev_prog_id and prev_prog_id != -1):
+                print("mag pos, prog_id, prev_prog_id ", magic_pos, prog_id, prev_prog_id)
+                codes[first_magic_pos: first_magic_pos + self.cols * magic_rows] = 0
+                with self.progman_lock:
+                    to_update_prog_id = prog_id if magic_pos == -1 else prev_prog_id
+                    self.progman.set_prog_last_row(to_update_prog_id, first_magic_pos / self.cols + magic_rows)
+                first_magic_pos = magic_pos;
+                if magic_pos == -1:
+                    print("break 2 ")
+                    break
+                magic_rows = 1
+
+            magic_pos += 1
+            prev_prog_id = prog_id
 
         self.vbuffer["pindex"] = np.arange(self.rows*self.cols)
         self.vbuffer["gindex"] = 2  # index of space in our font
@@ -393,10 +410,13 @@ class ArtSciTerm:
 
 
     def pty_function(self):
-        shell = os.environ.get('SHELL', 'sh')
         pid, self.master_fd = pty.fork()
         if pid == 0:  # CHILD
-            argv = (shell,)
+            if len(self.args[1]) > 0:
+                argv = self.args[1]
+            else:
+                shell = os.environ.get('SHELL', 'sh')
+                argv = (shell,)
             os.execl(argv[0], *argv)
         try:
             pass
@@ -412,7 +432,7 @@ class ArtSciTerm:
 
         fds = [self.master_fd]
         self.last_time = time.time()
-        max_size = 1024*1024
+        max_size = 10*1024*1024
         char_data = bytes()
         while True:
             rfds, _, _ = select(fds, [], [])
@@ -420,8 +440,7 @@ class ArtSciTerm:
                 os.waitpid(pid, os.WNOHANG)
             except Exception as exc:
                 # todo log 
-                self._app.quit()
-                self.finish = True
+                self.quit()
                 return
             # rfds = [master_fd]
             if self.master_fd in rfds:
@@ -435,15 +454,19 @@ class ArtSciTerm:
                         char_data += data
 
                     if time_now - self.last_time > 0.2 or data is None or len(char_data) > max_size:
-                        (programs, buf) = BufferProcessor(char_data).process()
+                        try:
+                            (cmds, buf) = self.buffer_processor.process(char_data)
+                        except:
+                            self.last_time = time_now
+                            continue
                         with self.vt_lock:
                             self.vt.push(buf)
-                        for program in programs:
-                            self.process_program(program)
+                        with self.progman_lock:
+                            for cmd in cmds:
+                                self.progman.process_cmd(cmd)
                         char_data = bytes()
                         self.dirty = True
                         self.update()
-                        self.last_time = time_now
                     if data is None:
                         break
 
