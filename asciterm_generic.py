@@ -275,7 +275,7 @@ class ArtSciTerm:
         self.data = data
         self.program["tex_data"] = self.as_texture_2d(data) # self.gloo.Texture2D(data)
         self.program["tex_data"].interpolation = gl.GL_NEAREST
-        self.program["tex_data"].wrapping = self.get_gl_detail('clamp_to_edge')
+        self.program["tex_data"].wrapping = self.program.to_gl_constant('clamp_to_edge')
 
         # self.program2["texture"] = self.as_texture_2d(data) #self.gloo.Texture2D(data)
         # self.program2["texture"].interpolation = gl.GL_NEAREST
@@ -339,13 +339,13 @@ class ArtSciTerm:
                     mouse = (2*self.mouse[0]/self.width - 1, 1 - 2*self.mouse[1]/self.height )
                     program['mouse'] = mouse
                 if program.active:
-                    program.draw(program.draw_mode)
+                    program.draw(program.to_gl_constant(program.draw_mode))
 
-        self.program.draw(self.get_gl_detail('points'))
+        self.program.draw(self.program.GL_POINTS)
 
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFunc(gl.GL_ONE_MINUS_SRC_ALPHA, gl.GL_SRC_ALPHA)
-        self.program1.draw(self.get_gl_detail('triangles'))
+        self.program1.draw(self.program1.GL_TRIANGLES)
 
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFunc(gl.GL_ONE_MINUS_SRC_ALPHA, gl.GL_SRC_ALPHA)
@@ -369,7 +369,6 @@ class ArtSciTerm:
         with self.progman_lock:
             for internal_id, program in self.progman.programs.items():
                 program.active = False
-        print("processing...")
         while True:
             magic_pos = as_str.find(BufferProcessor.magic_string, magic_pos)
             if (magic_pos != -1):
@@ -380,20 +379,16 @@ class ArtSciTerm:
                 if prog_id == prev_prog_id:
                     magic_rows += 1
 
-            print(magic_pos, prog_id, prev_prog_id)
             if magic_pos == -1 and prog_id == -1:
-                print("break 1")
                 break
 
             if magic_pos == -1 or (prog_id != prev_prog_id and prev_prog_id != -1):
-                print("mag pos, prog_id, prev_prog_id ", magic_pos, prog_id, prev_prog_id)
                 codes[first_magic_pos: first_magic_pos + self.cols * magic_rows] = 0
                 with self.progman_lock:
                     to_update_prog_id = prog_id if magic_pos == -1 else prev_prog_id
                     self.progman.set_prog_last_row(to_update_prog_id, first_magic_pos / self.cols + magic_rows)
                 first_magic_pos = magic_pos;
                 if magic_pos == -1:
-                    print("break 2 ")
                     break
                 magic_rows = 1
 

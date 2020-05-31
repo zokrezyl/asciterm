@@ -21,6 +21,14 @@ class ArtSciTermVispyProgram(gloo.Program):
 
         return attributes
 
+    def to_gl_constant(self, txt):
+        return txt
+
+
+    GL_CLAMP = "clamp_to_edge"
+    GL_POINTS = "points"
+    GL_TRIANGLES = "triangles"
+
 
 class ArtSciTermVispy(app.Canvas, ArtSciTerm):
     def __init__(self, args, width, height, x=0, y=0, scale=2):
@@ -52,9 +60,6 @@ class ArtSciTermVispy(app.Canvas, ArtSciTerm):
     def on_key_press(self, event):
         os.write(self.master_fd, str.encode(event.text))
         #self.update()
-
-    def get_gl_detail(self, what):
-        return what
 
     def adapt_vbuffer(self):
         pass

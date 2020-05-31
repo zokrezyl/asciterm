@@ -15,12 +15,24 @@ class ArtSciTermGlumpyProgram(gloo.Program):
     def get_attributes(self):
         return self.all_attributes
 
+    def to_gl_constant(self, what):
+        return {
+            'clamp_to_edge': gl.GL_CLAMP,
+            'points': gl.GL_POINTS,
+            'triangles': gl.GL_TRIANGLES
+            }[what]
+
+    GL_POINTS = gl.GL_POINTS
+    GL_TRIANGLES = gl.GL_TRIANGLES
+    GL_CLAMP = gl.GL_CLAMP
+
+
 class ArtSciTermGlumpy(ArtSciTerm):
     def __init__(self, args, width, height, x=0, y=0, scale=2):
 
         self.factory = Null()
         setattr(self.factory, "create_program", ArtSciTermGlumpyProgram)
-        setattr(self.factor, "ortho", glm.ortho)
+        setattr(self.factory, "ortho", glm.ortho)
 
         #self.gloo = gloo
         #self._app = app
@@ -69,22 +81,12 @@ class ArtSciTermGlumpy(ArtSciTerm):
         self._on_resize(width, height)
 
     def on_character(self, text):
-        print(text)
         if self.master_fd is not None:
             os.write(self.master_fd, str.encode(text))
     
-    def get_gl_detail(self, what):
-        return {
-                'clamp_to_edge': gl.GL_CLAMP,
-                'points': gl.GL_POINTS,
-                'triangles': gl.GL_TRIANGLES
-                }[what]
-
-
     def adapt_vbuffer(self):
         self.vbuffer = self.vbuffer.view(gloo.VertexBuffer)
         self.program.bind(self.vbuffer)
-        print("adapt_vbuffer")
     
     def quit(self):
         print("quitting")
