@@ -42,10 +42,6 @@ class ArtSciTermGlumpy(ArtSciTerm):
         #self._app = app
         ArtSciTerm.__init__(self, args, width, height, scale)
 
-        self.ffmpeg_writer = None
-        self.ffmpeg_buffer = None
-        self.ffmpeg_buffer_copy = None
-
     def run(self):
         app.use("qt5")
         self.window = app.Window(width = self.width, height = self.height)
@@ -63,9 +59,6 @@ class ArtSciTermGlumpy(ArtSciTerm):
                 time.sleep(0.01)
                 app.__backend__.process(0.05)
                 if self.finish:
-                    if self.ffmpeg_writer:
-                        print("closing video file")
-                        self.ffmpeg_writer.close()
                     return
 
 
@@ -92,18 +85,8 @@ class ArtSciTermGlumpy(ArtSciTerm):
         self.window.clear()
         self.draw(event)
 
-        if self.ffmpeg_writer:
-            print("writing with ... " , self.width, self.height)
-            gl.glReadPixels(0, 0, self.width, self.height,
-                            gl.GL_RGB, gl.GL_UNSIGNED_BYTE, self.ffmpeg_buffer)
-            self.ffmpeg_writer.write_frame(self.ffmpeg_buffer)
-
     def on_resize(self, width, height):
         self._on_resize(width, height)
-        if self.args[0].record and self.ffmpeg_writer is None and (time.time() - self.start_time > 1):
-            print("writing to: and width/heigth: ", self.args[0].record, width, height)
-            self.ffmpeg_writer = FFMPEG_VideoWriter(self.args[0].record, (width, height), fps=60)
-            self.ffmpeg_buffer = np.zeros((height, width, 3), dtype=np.uint8)
 
     def on_character(self, text):
         if self.master_fd is not None:
