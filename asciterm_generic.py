@@ -332,17 +332,9 @@ class ArtSciTerm:
 
         # self.window.clear()
         with self.progman_lock:
-            for internal_id, program in self.progman.programs.items():
-                if program.has_time:
-                    program['time'] = time_now - program.start_time
-                if program.has_mouse:
-                    mouse = (2*self.mouse[0]/self.width - 1, 1 - 2*self.mouse[1]/self.height )
-                    program['mouse'] = mouse
-                if program.has_resolution:
-                    program['resolution'] = (program["viewport"][2] * self.width, program["viewport"][1] * self.height)
-                    print(program['resolution'])
-                if program.active:
-                    program.draw(program.to_gl_constant(program.draw_mode))
+            mouse = (2*self.mouse[0]/self.width - 1, 1 - 2*self.mouse[1]/self.height )
+            for internal_id, prog_wrap in self.progman.prog_wraps.items():
+                prog_wrap.draw(time_now = time_now, mouse = mouse)
 
         self.program.draw(self.program.GL_POINTS)
 
@@ -370,8 +362,8 @@ class ArtSciTerm:
         codes = codes.copy()
         magic_rows = 1
         with self.progman_lock:
-            for internal_id, program in self.progman.programs.items():
-                program.active = False
+            for internal_id, prog_wrap in self.progman.prog_wraps.items():
+                prog_wrap.active = False
         while True:
             magic_pos = as_str.find(BufferProcessor.magic_string, magic_pos)
             if (magic_pos != -1):
