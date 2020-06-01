@@ -48,7 +48,7 @@ class CommandVispyTerm(Command):
 
     def run(self, args):
         from asciterm_vispy import ArtSciTermVispy
-        terminal = ArtSciTermVispy(args, 1000, 1000, scale=2.5)
+        terminal = ArtSciTermVispy(args, 1500, 1500, scale=1.0)
         terminal.run()
 
 
@@ -61,7 +61,7 @@ class CommandGlumpyTerm(Command):
 
     def run(self, args):
         from asciterm_glumpy import ArtSciTermGlumpy
-        terminal = ArtSciTermGlumpy(args, 1000, 1000, scale=2.5)
+        terminal = ArtSciTermGlumpy(args, 1000, 700, scale=1.0)
         terminal.run()
 
 
@@ -84,6 +84,8 @@ def run(raw_args=None):
         usage=f"{sys.argv[0]} [OPTIONS] COMMAND",
         description="OpenGL terminal 2.0 for artists scientists and engineers",
         epilog="")
+    parser.add_argument('--record',
+                        default='a.mpg')
     parser.add_argument('--log-level',
                         choices=['debug', 'info', 'warn', 'error', 'fatal'],
                         default='info')
@@ -123,6 +125,7 @@ def run(raw_args=None):
         return 1
 
     cmd = cmd_map[args[0].command]
+    print(sys.argv)
     return cmd.run(args)
 
 

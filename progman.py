@@ -54,8 +54,10 @@ class ProgramManager:
         if "vertex_shader" in cmd:
             vertex_shader = base64.b64decode(cmd["vertex_shader"].encode('ascii')).decode('ascii')
             vertex_shader = self.adapt_vertex_shader(vertex_shader)
+            #print(vertex_shader)
         if "fragment_shader" in cmd:
             fragment_shader = base64.b64decode(cmd["fragment_shader"].encode('ascii')).decode('ascii')
+            #print(fragment_shader)
         if "uniforms" in cmd:
             uniforms = msgpack.unpackb(base64.b64decode(cmd["uniforms"].encode('ascii')))
         if "attributes" in cmd:
@@ -72,27 +74,39 @@ class ProgramManager:
             cols = cmd["cols"]
 
         # inject the time uniform
-        program = self.factory.create_program(vertex_shader, fragment_shader)
+        try:
+            program = self.factory.create_program(vertex_shader, fragment_shader)
+            setattr(program, "active", False)
+        except Exception as exc:
+            print("exception while creating program: ", exc)
+            return
 
         for key, value in attributes.items():
+            #print("attr: ", key, value)
             program[key.decode('ascii')] = value
             #program[key] = value
 
         for key, value in uniforms.items():
+            #print("unif: ", key, value)
             program[key.decode('ascii')] = value
 
         has_time = False
         has_mouse = False
+        has_resolution = False
         for uniform in program.get_uniforms():
             if 'time' == uniform[0]:
                 has_time = True
             if 'mouse' == uniform[0]:
                 has_mouse = True
+            if 'resolution' == uniform[0]:
+                has_resolution = True
+
         setattr(program, "cols", cols)
         setattr(program, "rows", rows)
         setattr(program, "has_time", has_time)
         setattr(program, "start_time", time.time())
         setattr(program, "has_mouse", has_mouse)
+        setattr(program, "has_resolution", has_resolution)
         setattr(program, "first_row", 0)
         setattr(program, "draw_mode", draw_mode)
         self.programs[cmd["internal_id"]] = program
@@ -119,7 +133,6 @@ class ProgramManager:
 
 
     def set_prog_last_row(self, internal_id, row):
-        print("set_prog_last_row ", internal_id, row)
         program = self.programs[internal_id]
         program.last_row = row
         self.update_program_viewport(program)

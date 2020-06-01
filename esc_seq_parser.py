@@ -168,7 +168,6 @@ class BufferProcessor:
                 ret += self.buf[prev: self.tokenizer.pos]
                 return (cmds, ret)
             ret += self.buf[prev: self.tokenizer.pos]
-            print("found cmd at ", self.tokenizer.pos)
             try:
                 cmd = self.process_cmd()
                 if "cmd" in cmd:

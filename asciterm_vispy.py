@@ -39,7 +39,7 @@ class ArtSciTermVispy(app.Canvas, ArtSciTerm):
         #self.gloo = gloo
         #self._app = app
         app.Canvas.__init__(self)
-        ArtSciTerm.__init__(self, args)
+        ArtSciTerm.__init__(self, args, width, height, scale)
 
     def run(self):
         super().show()

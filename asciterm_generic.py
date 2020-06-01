@@ -199,10 +199,10 @@ class ArtSciTerm:
 
         self.handle_main_vbuffer()
 
-    def __init__(self, args):
-        self.width = 0
-        self.height = 0
-        self.scale = 2
+    def __init__(self, args, width, height, scale):
+        self.width = width
+        self.height = height
+        self.scale = scale
         self.char_width = 6.0
         self.char_height = 13.0
         self.start_time = time.time()
@@ -252,7 +252,7 @@ class ArtSciTerm:
                 self.height, self.char_width, self.char_height)
 
         self.buffer_processor = BufferProcessor()
-        self.adapt_to_dim(300, 300)
+        self.adapt_to_dim(self.width, self.height)
 
 
         # Build a texture out of glyph arrays (need to unpack bits)
@@ -338,6 +338,9 @@ class ArtSciTerm:
                 if program.has_mouse:
                     mouse = (2*self.mouse[0]/self.width - 1, 1 - 2*self.mouse[1]/self.height )
                     program['mouse'] = mouse
+                if program.has_resolution:
+                    program['resolution'] = (program["viewport"][2] * self.width, program["viewport"][1] * self.height)
+                    print(program['resolution'])
                 if program.active:
                     program.draw(program.to_gl_constant(program.draw_mode))
 
