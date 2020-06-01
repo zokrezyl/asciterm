@@ -11,21 +11,27 @@ import numpy as np
 # Shader source code: from https://github.com/vispy/vispy/blob/master/examples/demo/gloo/mandelbrot.py
 # -----------------------------------------------------------------------------
 vertex_shader = """
-attribute vec2 position;
-attribute vec2 texcoord;
-varying vec2 v_texcoord;
-
-void main()
-{
-    gl_Position = vec4(position.x, position.y, 0.0, 1.0);
-    v_texcoord = texcoord;
-}
+    attribute vec2 position;
+    attribute vec2 texcoord;
+    varying vec2 v_texcoord;
+    varying float v_zoom;
+    varying float v_depth;
+    uniform float time;
+    void main()
+    {
+        //gl_Position = <transform>;
+        gl_Position = vec4(position.x, position.y, 0.0, 1.0);
+        v_texcoord = texcoord;
+        v_zoom = 1.0/pow(2, (1.01 + sin(time/8))*8);
+        v_depth = 400.0 * (2 + sin(time/8)) - 400;
+    }
 """
 
 fragment_shader = """
-uniform vec2 mouse;
-uniform float time;
+
 varying vec2 v_texcoord;
+varying float v_zoom;
+varying float v_depth;
 
 vec3 hot(float t)
 {
@@ -36,9 +42,10 @@ vec3 hot(float t)
 
 void main()
 {
-    const int n = 300;
     const float log_2 = 0.6931471805599453;
-    vec2 c = 3.0*v_texcoord - vec2(2.0,1.5);
+    vec2 c = v_zoom * v_texcoord  - vec2( ( 2.5 + v_zoom )/ 2.0, 0.01);
+
+    float n = v_depth;
 
     float x, y, d;
     int i;
@@ -61,7 +68,6 @@ void main()
         gl_FragColor = vec4(hot(0.0),1.0);
     }
 }
-
 """
 
 
@@ -92,14 +98,14 @@ def envelope(cmd="create", draw_mode="triangle_strip", cols=80, rows=12, vertex_
 def main():
     attributes = msgpack.packb({
         'position': [(-1,-1), (-1, 1), ( 1,-1), ( 1, 1)],
-        'texcoord': [( 0, 1), ( 0, 0), ( 1, 1), ( 1, 0)]})
+        'texcoord': [( -1, 1), ( -1, -1), ( 1, 1), ( 1, -1)]})
 
     print("first we just print some lines...\r\n"  * 5)
     print(envelope(
         cmd="create",
         draw_mode="triangle_strip",
-        rows=20,
-        cols=60,
+        rows=15,
+        cols=180,
         vertex_shader=vertex_shader,
         fragment_shader=fragment_shader,
         attributes=attributes), end="")
