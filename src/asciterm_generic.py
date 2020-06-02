@@ -175,6 +175,7 @@ class ArtSciVTerm(VTerm):
         return True
 
     def on_set_term_altscreen(self, screen):
+        self.parent.altscreen = screen
         return True
 
 class ArtSciTerm:
@@ -207,6 +208,7 @@ class ArtSciTerm:
 
     def __init__(self, args):
         
+        self.altscreen = False
         self.width = 1000
         self.height = 1000
         size = args[0].size.split("x")
@@ -346,8 +348,9 @@ class ArtSciTerm:
 
         # self.window.clear()
         with self.progman_lock:
-            for internal_id, prog_wrap in self.progman.prog_wraps.items():
-                prog_wrap.draw(time_now = time_now, mouse = self.mouse)
+            if not self.altscreen:
+                for internal_id, prog_wrap in self.progman.prog_wraps.items():
+                    prog_wrap.draw(time_now = time_now, mouse = self.mouse)
 
         self.program.draw(self.program.GL_POINTS)
 
@@ -377,7 +380,7 @@ class ArtSciTerm:
         with self.progman_lock:
             for internal_id, prog_wrap in self.progman.prog_wraps.items():
                 prog_wrap.active = False
-        while True:
+        while not self.altscreen:
             magic_pos = as_str.find(BufferProcessor.magic_string, magic_pos)
             if (magic_pos != -1):
                 int_pos = magic_pos + len(BufferProcessor.magic_string)

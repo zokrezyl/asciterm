@@ -345,7 +345,7 @@ class VTerm(object):
     def _on_settermprop(self, prop, val, user):
         # TODO .. use this to set the window title...
         if prop == VTerm.VTERM_PROP_ALTSCREEN:
-            self.on_set_term_altscreen(val)
+            self.on_set_term_altscreen(val.contents.boolean)
         elif prop == VTerm.VTERM_PROP_TITLE:
             self.on_set_term_title(val.contents.string)
         return int(True)
