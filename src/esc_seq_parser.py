@@ -167,17 +167,19 @@ class BufferProcessor:
             if token[0] == TOKEN_EOB:
                 ret += self.buf[prev: self.tokenizer.pos]
                 return (cmds, ret)
+            print("escape seq found")
             ret += self.buf[prev: self.tokenizer.pos]
             try:
                 cmd = self.process_cmd()
                 if "cmd" in cmd:
+                    print("cmd seq found")
                     if cmd["cmd"] == "create" and "rows" in cmd:
                         #ret += ("\n"*cmd["rows"]).encode('ascii')
                         # We are insert this fake string as place marker for the cmd
                         # when we draw a new screen we will hunt for these strings in the vterm 
                         # and replace them with blanks and display over it the program
-                        ret += (f"{self.magic_string_s}{self.last_program_id:08}\r\n"\
-                                *cmd["rows"]).encode('ascii')
+                        #ret += (f"{self.magic_string_s}{self.last_program_id:08}\r\n"\
+                        #        *cmd["rows"]).encode('ascii')
                         cmd["internal_id"] = self.last_program_id
                         self.last_program_id += 1
                     prev = self.tokenizer.pos
