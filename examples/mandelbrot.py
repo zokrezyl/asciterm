@@ -1,33 +1,30 @@
 #!/usr/bin/env python3
-import base64
-import msgpack
 import time
 import sys
 import numpy as np
-#import msgpack_numpy as m
-
-#m.patch()
+from client_lib import envelope
 
 # Shader source code: from https://github.com/vispy/vispy/blob/master/examples/demo/gloo/mandelbrot.py
 # -----------------------------------------------------------------------------
 vertex_shader = """
-    attribute vec2 position;
-    attribute vec2 texcoord;
-    varying vec2 v_texcoord;
-    varying float v_zoom;
-    varying float v_depth;
-    uniform float time;
-    void main()
-    {
-        //gl_Position = <transform>;
-        gl_Position = vec4(position.x, position.y, 0.0, 1.0);
-        v_texcoord = texcoord;
-        v_zoom = 1.0/pow(2, (1.01 + sin(time/8))*8);
-        v_depth = 400.0 * (2 + sin(time/8)) - 400;
-    }
+$vertex_shader_variables;
+attribute vec2 position;
+attribute vec2 texcoord;
+varying vec2 v_texcoord;
+varying float v_zoom;
+varying float v_depth;
+void main()
+{
+    gl_Position = vec4(position.x, position.y, 0.0, 1.0);
+    v_texcoord = texcoord;
+    v_zoom = 1.0/pow(2, (1.01 + sin(time/8))*8);
+    v_depth = 400.0 * (2 + sin(time/8)) - 400;
+    $vertex_shader_epilog;
+}
 """
 
 fragment_shader = """
+$fragment_shader_variables;
 
 varying vec2 v_texcoord;
 varying float v_zoom;
@@ -71,34 +68,10 @@ void main()
 """
 
 
-def transcode(what):
-    return base64.b64encode(what.encode('ascii')).decode('ascii')
-
-def envelope(cmd="create", draw_mode="triangle_strip", cols=80, rows=12, vertex_shader=None, fragment_shader=None,
-             attributes=None, uniforms=None):
-
-    ret = f"\033_Acmd='{cmd}',rows={rows},cols={cols},draw_mode='{draw_mode}'"
-    if vertex_shader:
-        ret += f",vertex_shader='{transcode(vertex_shader)}'"
-
-    if fragment_shader:
-        ret += f",fragment_shader='{transcode(fragment_shader)}'"
-
-    if attributes:
-        ret += f",attributes='{base64.b64encode(attributes).decode('ascii')}'"
-
-    if uniforms:
-        ret += f",uniforms='{base64.b64encode(uniforms).decode('ascii')}'"
-
-    ret += "\033\\"
-
-    return ret
-
-
 def main():
-    attributes = msgpack.packb({
+    attributes = {
         'position': [(-1,-1), (-1, 1), ( 1,-1), ( 1, 1)],
-        'texcoord': [( -1, 1), ( -1, -1), ( 1, 1), ( 1, -1)]})
+        'texcoord': [( -1, 1), ( -1, -1), ( 1, 1), ( 1, -1)]}
 
     print("first we just print some lines...\r\n"  * 5)
     print(envelope(
@@ -111,7 +84,8 @@ def main():
         attributes=attributes), end="")
 
     sys.stdout.flush()
-    #time.sleep(100)
+    if len(sys.argv) > 1:
+        time.sleep(float(sys.argv[1]))
 
 if __name__ == "__main__":
     main()

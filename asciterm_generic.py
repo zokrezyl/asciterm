@@ -199,10 +199,18 @@ class ArtSciTerm:
 
         self.handle_main_vbuffer()
 
-    def __init__(self, args, width, height, scale):
-        self.width = width
-        self.height = height
-        self.scale = scale
+    def __init__(self, args):
+        
+        self.width = 1000
+        self.height = 1000
+        size = args[0].size.split("x")
+        if len(size) == 2:
+            self.width = int(size[0])
+            self.height = int(size[1])
+        else:
+            print("arg szie has to be in form <width>x<height>, instead got {args[0].size}, using defaults {self.width}, {self.height}")
+
+        self.scale = float(args[0].scale)
         self.char_width = 6.0
         self.char_height = 13.0
         self.start_time = time.time()
@@ -332,9 +340,8 @@ class ArtSciTerm:
 
         # self.window.clear()
         with self.progman_lock:
-            mouse = (2*self.mouse[0]/self.width - 1, 1 - 2*self.mouse[1]/self.height )
             for internal_id, prog_wrap in self.progman.prog_wraps.items():
-                prog_wrap.draw(time_now = time_now, mouse = mouse)
+                prog_wrap.draw(time_now = time_now, mouse = self.mouse)
 
         self.program.draw(self.program.GL_POINTS)
 

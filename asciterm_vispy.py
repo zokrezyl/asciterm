@@ -31,7 +31,7 @@ class ArtSciTermVispyProgram(gloo.Program):
 
 
 class ArtSciTermVispy(app.Canvas, ArtSciTerm):
-    def __init__(self, args, width, height, x=0, y=0, scale=2):
+    def __init__(self, args):
         self.factory = Null()
         setattr(self.factory, "create_program", ArtSciTermVispyProgram)
         setattr(self.factory, "ortho",  util.transforms.ortho)
@@ -39,7 +39,7 @@ class ArtSciTermVispy(app.Canvas, ArtSciTerm):
         #self.gloo = gloo
         #self._app = app
         app.Canvas.__init__(self)
-        ArtSciTerm.__init__(self, args, width, height, scale)
+        ArtSciTerm.__init__(self, args)
 
     def run(self):
         super().show()

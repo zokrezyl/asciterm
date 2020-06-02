@@ -48,7 +48,7 @@ class CommandVispyTerm(Command):
 
     def run(self, args):
         from asciterm_vispy import ArtSciTermVispy
-        terminal = ArtSciTermVispy(args, 1500, 1500, scale=1.0)
+        terminal = ArtSciTermVispy(args)
         terminal.run()
 
 
@@ -61,7 +61,7 @@ class CommandGlumpyTerm(Command):
 
     def run(self, args):
         from asciterm_glumpy import ArtSciTermGlumpy
-        terminal = ArtSciTermGlumpy(args, 1000, 700, scale=1.0)
+        terminal = ArtSciTermGlumpy(args)
         terminal.run()
 
 
@@ -74,7 +74,7 @@ class CommandKivyTerm(Command):
 
     def run(self, args):
         from asciterm_kivy import ArtSciTermKivy
-        terminal = ArtSciTermKivy(args, 1000, 1000, scale=2.5)
+        terminal = ArtSciTermKivy(args)
         terminal.run()
 
 
@@ -86,10 +86,12 @@ def run(raw_args=None):
         epilog="")
     parser.add_argument('--record',
                         default='a.mpg')
-    parser.add_argument('--log-level',
+    parser.add_argument('-s', '--scale', default='2')
+    parser.add_argument('-d', '--size', default='1000x1000')
+    parser.add_argument('-l', '--log-level',
                         choices=['debug', 'info', 'warn', 'error', 'fatal'],
                         default='info')
-    parser.add_argument('-l', '--libvterm-path',
+    parser.add_argument('-p', '--libvterm-path',
                         help="path to the libvterm library, otherwise we use ldconf to find it")
 
     subparsers = parser.add_subparsers(dest='command')
@@ -121,8 +123,7 @@ def run(raw_args=None):
         handler.setLevel(log_level)
 
     if args[0].command is None:
-        parser.print_help()
-        return 1
+        args[0].command = "vispy-term"
 
     cmd = cmd_map[args[0].command]
     print(sys.argv)

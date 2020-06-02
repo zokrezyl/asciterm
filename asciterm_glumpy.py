@@ -33,14 +33,12 @@ class ArtSciTermGlumpyProgram(gloo.Program):
 
 
 class ArtSciTermGlumpy(ArtSciTerm):
-    def __init__(self, args, width, height, x=0, y=0, scale=2):
+    def __init__(self, args):
         self.factory = Null()
         setattr(self.factory, "create_program", ArtSciTermGlumpyProgram)
         setattr(self.factory, "ortho", glm.ortho)
 
-        #self.gloo = gloo
-        #self._app = app
-        ArtSciTerm.__init__(self, args, width, height, scale)
+        ArtSciTerm.__init__(self, args)
 
     def run(self):
         app.use("qt5")
