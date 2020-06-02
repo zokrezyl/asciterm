@@ -165,11 +165,17 @@ class ArtSciVTerm(VTerm):
         self.parent.cursor_pos = pos
         self.parent.cursor_oldpos = oldpos
         self.parent.on_cursor_move()
-        return int(True)
+        return True
 
     def on_damage(self, rect, user):
-        return int(True)
+        return True
 
+    def on_set_term_title(self, title):
+        self.parent.title = title.decode('ascii')
+        return True
+
+    def on_set_term_altscreen(self, screen):
+        return True
 
 class ArtSciTerm:
 

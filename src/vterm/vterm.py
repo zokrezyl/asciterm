@@ -8,6 +8,8 @@ import os
 
 
 from ctypes import (
+    cast,
+    c_char_p,
     c_void_p,
     c_uint,
     c_size_t,
@@ -151,7 +153,7 @@ class VTermValue_u(Union):
     _fields_ = (
           ('boolean', c_int),
           ('number', c_int),
-          ('string', POINTER(c_char)),
+          ('string', c_char_p),
           ('color', VTermColor_s),)
 
 
@@ -231,6 +233,10 @@ def get_functions(lib):
                 ('callbacks', POINTER(VTermScreenCallbacks_s)),
                 ('user', User_p),
         )),
+        vterm_screen_enable_altscreen=(None, (
+                ('screen', VTermScreen_p),
+                ('altscreen', c_int),
+        )),
         vterm_free=(None, (
             ('vt', VTerm_p),
         )),
@@ -246,6 +252,15 @@ def get_functions(lib):
 
 
 class VTerm(object):
+
+    VTERM_PROP_CURSORVISIBLE = 1 ,# bool
+    VTERM_PROP_CURSORBLINK =2       # bool
+    VTERM_PROP_ALTSCREEN =3         # bool
+    VTERM_PROP_TITLE = 4             # string
+    VTERM_PROP_ICONNAME = 5          # string
+    VTERM_PROP_REVERSE = 6           # bool
+    VTERM_PROP_CURSORSHAPE = 7       # number
+    VTERM_PROP_MOUSE = 8             # number
     def find_in_ld_cache(self):
         ret = None
         try:
@@ -306,6 +321,7 @@ class VTerm(object):
             sb_popline=VTermScreenCallbacks_s.sb_popline_f(0))
 
         self.functions.vterm_screen_set_callbacks(self.screen, self.callbacks, None)
+        self.functions.vterm_screen_enable_altscreen(self.screen, 1)
         self.cursor_pos = VTermPos_s()
 
     def _on_damage(self, rect, user):
@@ -328,6 +344,10 @@ class VTerm(object):
 
     def _on_settermprop(self, prop, val, user):
         # TODO .. use this to set the window title...
+        if prop == VTerm.VTERM_PROP_ALTSCREEN:
+            self.on_set_term_altscreen(val)
+        elif prop == VTerm.VTERM_PROP_TITLE:
+            self.on_set_term_title(val.contents.string)
         return int(True)
 
     def _on_resize(self, new_rows, new_cols, delta, user):
