@@ -168,6 +168,7 @@ class ArtSciVTerm(VTerm):
         return True
 
     def on_damage(self, rect, user):
+        #print("on_damage")
         return True
 
     def on_set_term_title(self, title):

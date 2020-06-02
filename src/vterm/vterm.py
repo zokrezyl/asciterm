@@ -237,6 +237,10 @@ def get_functions(lib):
                 ('screen', VTermScreen_p),
                 ('altscreen', c_int),
         )),
+        vterm_screen_set_damage_merge=(None, (
+                ('screen', VTermScreen_p),
+                ('damage_size', c_int),
+        )),
         vterm_free=(None, (
             ('vt', VTerm_p),
         )),
@@ -261,6 +265,12 @@ class VTerm(object):
     VTERM_PROP_REVERSE = 6           # bool
     VTERM_PROP_CURSORSHAPE = 7       # number
     VTERM_PROP_MOUSE = 8             # number
+
+
+    VTERM_DAMAGE_CELL = 0,    # every cell 
+    VTERM_DAMAGE_ROW  =  1    # entire rows 
+    VTERM_DAMAGE_SCREEN = 2  # entire screen
+    VTERM_DAMAGE_SCROLL = 3  # entire screen + scrollrect 
     def find_in_ld_cache(self):
         ret = None
         try:
@@ -311,7 +321,7 @@ class VTerm(object):
         self.functions.vterm_screen_reset(self.screen, int(bool(True)))
 
         self.callbacks = VTermScreenCallbacks_s(
-            damage=VTermScreenCallbacks_s.damage_f(self._on_damage),
+            #damage=VTermScreenCallbacks_s.damage_f(self._on_damage),
             movecursor=VTermScreenCallbacks_s.movecursor_f(self._on_movecursor),
             moverect=VTermScreenCallbacks_s.moverect_f(0),
             settermprop=VTermScreenCallbacks_s.settermprop_f(self._on_settermprop),
@@ -322,12 +332,14 @@ class VTerm(object):
 
         self.functions.vterm_screen_set_callbacks(self.screen, self.callbacks, None)
         self.functions.vterm_screen_enable_altscreen(self.screen, 1)
+        self.functions.vterm_screen_set_damage_merge(self.screen, VTerm.VTERM_DAMAGE_SCROLL)
+        #self.functions.vterm_screen_set_damage_merge(self.screen, VTerm.VTERM_DAMAGE_SCREEN)
         self.cursor_pos = VTermPos_s()
 
     def _on_damage(self, rect, user):
         return self.on_damage(rect, user)
 
-    def on_damage(self, rect, user):
+    def __on_damage(self, rect, user):
         return int(True)
 
     def _on_moverect(self, dest, src, user):
