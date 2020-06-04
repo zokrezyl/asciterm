@@ -3,6 +3,8 @@ For early suggestions, critics please add comments to https://github.com/zokrezy
 # ArtSciTerm: OpenGL Terminal 2.0 for Artists, Scientists and Engineers
 
 ![demo1](demo1.gif)
+You should see a GIF demo above, but probably due to it's size github may throttle it, please click https://github.com/zokrezyl/asciterm/blob/master/demo1.gif
+
 
 ## What kind of problems do I want to solve
 * create a rich terminal like iPython/Jupyter where
