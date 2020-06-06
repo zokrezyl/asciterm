@@ -97,7 +97,6 @@ class ArtSciTerm:
         self.vt_lock = threading.Lock()
         self.progman_lock = threading.Lock()
 
-
         self.program = self.factory.create_program(
                 open(os.path.join(self.src_path, "gl/term.vert.glsl")).read(),
                 open(os.path.join(self.src_path, "gl/term.frag.glsl")).read())
@@ -107,12 +106,12 @@ class ArtSciTerm:
                 open(os.path.join(self.src_path, "gl/cur.frag.glsl")).read(),
                 count=5)
 
-        self.program1["scale"]= self.scale
+        self.program1["scale"] = self.scale
 
         self.font = ArtSciTermFont(self.src_path)
 
         self.progman = ProgramManager(self.factory, self.width,
-                                      self.height, self.font.char_width, 
+                                      self.height, self.font.char_width,
                                       self.font.char_height)
 
         self.buffer_processor = BufferProcessor()
