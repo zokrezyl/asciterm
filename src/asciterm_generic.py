@@ -19,123 +19,6 @@ from esc_seq_parser import BufferProcessor
 from progman import ProgramManager
 from font import ArtSciTermFont
 
-vertex = """
-#version 120
-
-// Uniforms
-// --------
-uniform sampler2D tex_data;
-uniform vec2 tex_size;
-uniform float char_width;
-uniform float char_height;
-//uniform float rows;
-uniform float cols;
-uniform float scale;
-//uniform vec4 foreground;
-//uniform vec4 background;
-//uniform vec2 selection;
-uniform mat4 projection;
-
-// Attributes
-// ----------
-attribute float pindex;
-attribute float gindex;
-attribute vec4 fg;
-attribute vec4 bg;
-
-
-// Varyings
-// --------
-varying vec4 v_fg;
-varying vec4 v_bg;
-varying vec2 v_texcoord;
-varying vec4 v_foreground;
-varying vec4 v_background;
-
-
-// Main
-// ----
-void main (void)
-{
-    // Compute char position from pindex
-    float x = mod(pindex, cols);
-    float y = floor(pindex/cols);
-    vec2 P = (vec2(x,y) * vec2(char_width, char_height)) * scale;
-    P += vec2(char_height, char_height)*scale/2.0;
-    P += vec2(2.0, 2.0);
-    gl_Position = projection*vec4(P, 0.0, 1.0);
-    gl_PointSize = char_height * scale ;
-
-    v_fg = fg.yzwx;
-    v_bg = bg.yzwx;
-
-    float n = tex_size.x/char_width;
-    x = 0.5 +  mod(gindex, n) * char_width;
-    y = 0.5 + floor(gindex/n) * char_height;
-    v_texcoord = vec2(x/tex_size.x, y/tex_size.y);
-}
-"""
-
-fragment = """
-#version 120
-
-// Uniforms
-// --------
-uniform sampler2D tex_data;
-uniform vec2 tex_size;
-uniform float char_width;
-uniform float char_height;
-//uniform float rows;
-uniform float cols;
-uniform float scale;
-//uniform vec2 selection;
-//uniform vec4 foreground;
-
-
-// Varyings
-// --------
-varying vec2 v_texcoord;
-//varying vec4 v_background;
-//varying vec4 v_foreground;
-varying vec4 v_fg;
-varying vec4 v_bg;
-
-
-// Main
-// ----
-void main(void)
-{
-    vec2 uv = floor(gl_PointCoord.xy * char_height);
-    if(uv.x > (char_width-1.0)) discard;
-    if(uv.y > (char_height-1.0)) discard;
-    float v = texture2D(tex_data, v_texcoord+uv/tex_size).r;
-    gl_FragColor = v * v_fg + (1.0-v) * v_bg;
-}
-"""
-
-vertex1 = """
-#version 120
-    uniform float scale;
-    attribute vec2 position;
-    void main()
-    {
-        //gl_Position = vec4(position, 0.0, 1)*scale;
-        gl_Position = vec4(position, 0.0, 1);
-    } """
-
-fragment1 = """
-#version 120
-    uniform vec4 color;
-    uniform float time;
-    void main()
-    {
-        gl_FragColor = vec4(1.0*sin(time), 0.7*cos(2*time), 0.7, 0.2);
-    } """
-
-
-
-
-
 
 class ArtSciVTerm(VTerm):
     def __init__(self, libvterm_path, rows, cols, parent):
@@ -191,6 +74,8 @@ class ArtSciTerm:
 
     def __init__(self, args):
         
+        self.src_path = os.path.dirname(os.path.abspath(__file__))
+
         self.altscreen = False
         self.width = 1000
         self.height = 1000
@@ -216,11 +101,18 @@ class ArtSciTerm:
         self.progman_lock = threading.Lock()
 
 
-        self.program = self.factory.create_program(vertex, fragment)
-        self.program1 = self.factory.create_program(vertex1, fragment1, count=5)
+        self.program = self.factory.create_program(
+                open(os.path.join(self.src_path, "gl/term.vert.glsl")).read(),
+                open(os.path.join(self.src_path, "gl/term.frag.glsl")).read())
+
+        self.program1 = self.factory.create_program(
+                open(os.path.join(self.src_path, "gl/cur.vert.glsl")).read(),
+                open(os.path.join(self.src_path, "gl/cur.frag.glsl")).read(),
+                count=5)
+
         self.program1["scale"]= self.scale
 
-        self.font = ArtSciTermFont()
+        self.font = ArtSciTermFont(self.src_path)
 
         self.progman = ProgramManager(self.factory, self.width,
                 self.height, self.font.char_width, self.font.char_height)

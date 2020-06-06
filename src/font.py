@@ -2,9 +2,7 @@ import numpy as np
 import os
 
 class ArtSciTermFont:
-    def __init__(self):
-        self_path = os.path.dirname(os.path.abspath(__file__))
-        print(self_path)
+    def __init__(self, self_path):
         self.data_dir = os.path.join(self_path, "data")
 
         self.char_width = 6.0
