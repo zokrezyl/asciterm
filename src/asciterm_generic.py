@@ -32,7 +32,6 @@ class ArtSciVTerm(VTerm):
         return True
 
     def on_damage(self, rect, user):
-        #print("on_damage")
         return True
 
     def on_set_term_title(self, title):
@@ -49,7 +48,7 @@ class ArtSciTerm:
     def adapt_to_dim(self, width, height):
         self.mouse = (0, 0)
         self.width, self.height = width, height
-        self.cols = width  // int(self.font.char_width * self.scale)
+        self.cols = width // int(self.font.char_width * self.scale)
         self.rows = height // int(self.font.char_height * self.scale)
         self.program["cols"] = self.cols
         with self.vt_lock:
@@ -57,8 +56,6 @@ class ArtSciTerm:
         if self.master_fd:
             buf = array.array('h', [self.rows, self.cols, 0, 0])
             fcntl.ioctl(self.master_fd, termios.TIOCSWINSZ, buf)
-        else:
-            pass # nothing bad.. we are initializing
 
         self.vbuffer = np.zeros(self.rows*self.cols, [("pindex", np.float32, 1),
                                              ("gindex", np.float32, 1),
@@ -73,7 +70,7 @@ class ArtSciTerm:
         self.handle_main_vbuffer()
 
     def __init__(self, args):
-        
+
         self.src_path = os.path.dirname(os.path.abspath(__file__))
 
         self.altscreen = False
@@ -92,7 +89,7 @@ class ArtSciTerm:
         self.args = args
         self.finish = False
         self.dirty = True
-        self.cursor_pos = VTermPos_s(0,0)
+        self.cursor_pos = VTermPos_s(0, 0)
         self.char_data = bytes()
         self.master_fd = None
 
@@ -115,21 +112,21 @@ class ArtSciTerm:
         self.font = ArtSciTermFont(self.src_path)
 
         self.progman = ProgramManager(self.factory, self.width,
-                self.height, self.font.char_width, self.font.char_height)
+                                      self.height, self.font.char_width, 
+                                      self.font.char_height)
 
         self.buffer_processor = BufferProcessor()
         self.adapt_to_dim(self.width, self.height)
 
-
-        self.program["tex_data"] = self.as_texture_2d(self.font.data) # self.gloo.Texture2D(data)
+        self.program["tex_data"] = self.as_texture_2d(self.font.data)  # self.gloo.Texture2D(data)
         self.program["tex_data"].interpolation = gl.GL_NEAREST
         self.program["tex_data"].wrapping = self.program.to_gl_constant('clamp_to_edge')
 
         self.program["tex_size"] = self.font.t_width, self.font.t_height
         self.program["char_width"] = self.font.char_width
-        self.program["char_height"]= self.font.char_height
+        self.program["char_height"] = self.font.char_height
         self.program["cols"] = self.cols
-        self.program["scale"]= self.scale
+        self.program["scale"] = self.scale
 
         gl.glEnable(gl.GL_BLEND)
         self.create_timer(interval=0.01)
@@ -144,15 +141,13 @@ class ArtSciTerm:
 
     def on_cursor_move(self):
         x1 = 2 * self.cursor_pos.col / self.cols - 1
-        y1 = 1 - 2 * (self.cursor_pos.row + 0.7)/ self.rows
+        y1 = 1 - 2 * (self.cursor_pos.row + 0.7) / self.rows
 
         x2 = x1 - 2 * self.scale * self.font.char_width / self.width
         y2 = y1 - 2 * self.scale * self.font.char_height / self.height
 
         self.cursor_position = [((3*x1 + x2)/4, y1), (x1, y2), (x2, y2), (x2, y1), (x1, y1)]
         self.handle_cursor_vbuffer()
-
-
 
     def draw(self, event):
         time_now = time.time()
@@ -172,13 +167,13 @@ class ArtSciTerm:
         self.program1['time'] = time_elapsed*5
         # TODO .. look into vispy/gloo/wrappers.py to use vispy functions
         gl.glBlendFuncSeparate(gl.GL_ONE,  gl.GL_ONE,
-                            gl.GL_ZERO, gl.GL_ONE_MINUS_SRC_ALPHA)
+                               gl.GL_ZERO, gl.GL_ONE_MINUS_SRC_ALPHA)
 
         # self.window.clear()
         with self.progman_lock:
             if not self.altscreen:
                 for internal_id, prog_wrap in self.progman.prog_wraps.items():
-                    prog_wrap.draw(time_now = time_now, mouse = self.mouse)
+                    prog_wrap.draw(time_now=time_now, mouse=self.mouse)
 
         self.program.draw(self.program.GL_POINTS)
 
@@ -189,20 +184,18 @@ class ArtSciTerm:
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFunc(gl.GL_ONE_MINUS_SRC_ALPHA, gl.GL_SRC_ALPHA)
 
-
     def process(self):
         """ Put text at (row,col) """
 
         with self.vt_lock:
             buf = np.ctypeslib.as_array(self.vt.screen.contents.buffer, (self.rows*self.cols, ))
-            codes = buf["chars"][:,0:1].reshape((self.rows*self.cols))
-        # 
+            codes = buf["chars"][:, 0:1].reshape((self.rows*self.cols))
+
         as_str = codes.astype('b').tostring()
         magic_pos = 0
         first_magic_pos = -1
         prev_prog_id = -1
         prog_id = -1
-        prog_positions = {}
         codes = codes.copy()
         magic_rows = 1
         with self.progman_lock:
