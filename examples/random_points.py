@@ -6,16 +6,19 @@ import numpy as np
 from client_lib import envelope
 
 vertex_shader = """
+$vertex_shader_variables;
 attribute vec2 position;
 
 
 void main() {
     gl_PointSize = 1;
     gl_Position = vec4(position.x, position.y, 0, 1.0);
+    $vertex_shader_epilog;
 }
 """
 
 fragment_shader = """
+$fragment_shader_variables;
 void main() {
     gl_FragColor = vec4(sin(time), sin(time/2), sin(time/3), 1.0);
     //gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
