@@ -75,9 +75,8 @@ class ArtSciTermVispy(app.Canvas, ArtSciTerm):
         self.update()
 
     def on_mouse_wheel(self, event):
-        print("on_mouse_wheel ", event.delta)
         self.on_scroll(*event.delta)
-        return
+        return  # TODO ... implement the scale when shift is pressed
         self.scale += event.delta[1]/10
         if self.scale < 0.5:
             self.scale = 0.5

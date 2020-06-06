@@ -57,16 +57,13 @@ class ArtSciVTerm(VTerm):
         buf = buf_orig.copy().reshape(self.rows, self.cols)
         buf[self.scroll:] = buf[0: self.rows - self.scroll]
         len_sb = len(self.sb)
-        print("len sb ", len_sb)
         for row in range(self.scroll):
             sb_info = self.sb[len_sb - self.scroll + row]
             min_cols = min(sb_info[0], self.cols)
-            print("min cols ", min_cols, self.cols, sb_info[0])
-            print([a.chars[0] for a in sb_info[1]])
             for col in range(min_cols):
                 buf[row][col]["chars"][0] = sb_info[1][col].chars[0]
-                #buf[row][col]["fg"] = sb_info[1][col].fg
-                #buf[row][col]["bg"] = sb_info[1][col].bg
+                buf[row][col]["fg"] = sb_info[1][col].fg
+                buf[row][col]["bg"] = sb_info[1][col].bg
 
         self.buf = buf.reshape(self.rows * self.cols)
 
@@ -140,6 +137,8 @@ class ArtSciVTerm(VTerm):
         buf = (VTermScreenCell_s * cols)()
         memmove(buf, cells, cols * sizeof(VTermScreenCell_s))
         self.sb.append((cols, buf))
+        if len(self.sb) > 1000:
+            self.sb.pop(0)
         return True
 
     def on_sb_popline(self, cols, cells, user):
