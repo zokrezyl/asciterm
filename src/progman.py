@@ -38,7 +38,6 @@ def adapt_vertex_shader(vertex_shader):
     vertex_shader = Template(vertex_shader).substitute(
         vertex_shader_variables = VERTEX_SHADER_VARIABLES,
         vertex_shader_epilog = VERTEX_SHADER_EPILOG)
-    #print("vertex_shader: \n", vertex_shader)
 
     return vertex_shader
 
@@ -47,7 +46,6 @@ def adapt_fragment_shader(fragment_shader):
     fragment_shader = Template(fragment_shader).substitute(
             fragment_shader_variables = FRAGMENT_SHADER_VARIABLES,
             fragment_shader_prolog = FRAGMENT_SHADER_PROLOG)
-    #print("fragment_shader:\n", fragment_shader)
     return fragment_shader
 
 class ProgWrap:
@@ -139,29 +137,28 @@ class ProgWrap:
 
     def draw(self, time_now, mouse):
         mouse = (mouse[0], self.progman.screen_height - mouse[1])
-        if self.is_active:
-            try:
-                #TODO .. refactor this.. don't update what does not change
-                self.program["viewport"] = self.viewport
-                self.program["screenResolution"] = (self.progman.screen_width, self.progman.screen_height)
-                self.program["time"] = time_now - self.start_time
-                self.program["screenMousePos"] = mouse
-                self.program['mousePos'] = (mouse[0] - self.viewport[0], mouse[1] - self.viewport[1])
-                self.program.draw(self.program.to_gl_constant(self.draw_mode))
-            except RuntimeError as exc:
-                print("Program: cannot draw...: ", exc)
+        try:
+            #TODO .. refactor this.. don't update what does not change
+            self.program["viewport"] = self.viewport
+            self.program["screenResolution"] = (self.progman.screen_width, self.progman.screen_height)
+            self.program["time"] = time_now - self.start_time
+            self.program["screenMousePos"] = mouse
+            self.program['mousePos'] = (mouse[0] - self.viewport[0], mouse[1] - self.viewport[1])
+            self.program.draw(self.program.to_gl_constant(self.draw_mode))
+        except RuntimeError as exc:
+            print("Program: cannot draw...: ", exc)
 
 
 
 class ProgramManager:
-    def __init__(self, factory, screen_width, screen_height, char_width, char_height):
+    def __init__(self, factory, char_width, char_height):
         self.lock = threading.Lock()
         self.factory = factory
         self.scale = 0
         self.screen_rows = 0
         self.screen_cols = 0
-        self.screen_width = screen_width
-        self.screen_height = screen_height
+        self.screen_width = 0
+        self.screen_height = 0
         self.char_width = char_width
         self.char_height = char_height
         self.prog_wraps = {}
@@ -181,11 +178,19 @@ class ProgramManager:
         for key, program in self.prog_wraps.items():
             program.update_viewport()
 
-
     def set_prog_last_row(self, internal_id, row):
         program = self.prog_wraps[internal_id]
         program.last_row = row
         program.update_viewport()
         program.is_active = True
 
+    def reset(self):
+        for internal_id, prog_wrap in self.prog_wraps.items():
+            prog_wrap.is_active = False
+
+    def draw(self, mouse):
+        time_now = time.time()
+        for internal_id, prog_wrap in self.prog_wraps.items():
+            if prog_wrap.is_active:
+                prog_wrap.draw(time_now=time_now, mouse=mouse)
 
