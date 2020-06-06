@@ -159,10 +159,14 @@ fragment2 = """
 
 from ctypes import create_string_buffer, sizeof, memmove
 class ArtSciVTerm(VTerm):
-    def __init__(self, libvterm_path, rows, cols, parent):
+    def __init__(self, progman, libvterm_path, rows, cols, parent):
+        self.progman = progman
+        self.lock = threading.Lock()
+        self.cmd_lock = threading.Lock()
         self.sb = []
         self.parent = parent
         self.codes = None
+        self.cmds = []
         super().__init__(libvterm_path, rows, cols)
 
     def on_movecursor(self, pos, oldpos, visible, user):
@@ -171,16 +175,28 @@ class ArtSciVTerm(VTerm):
         self.parent.on_cursor_move()
         return True
 
+    def process_cmd_queue(self):
+        cmds = None
+        with self.cmd_lock:
+            cmds = self.cmds
+            self.cmds = []
+        for cmd in cmds:
+            print(cmd)
+            self.progman.process_cmd(cmd)
+
     def on_damage(self, rect, user):
         #print("on_damage")
         buf = np.ctypeslib.as_array(self.screen.contents.buffer, (self.rows*self.cols, ))
         self.codes = buf["chars"][:, 0:1].reshape((self.rows*self.cols))
+        self.process_cmd_queue()
         return True
 
     def on_moverect(self, dest, src, user):
         buf = np.ctypeslib.as_array(self.screen.contents.buffer, (self.rows*self.cols, ))
         self.codes = buf["chars"][:, 0:1].reshape((self.rows*self.cols))
         #print("moverect")
+        self.process_cmd_queue()
+        return True
         return True
 
     def on_set_term_title(self, title):
@@ -241,7 +257,7 @@ class ArtSciTerm:
                                              ("bg", np.float32, 4)])
         self.program["projection"] = self.factory.ortho(0, width, height, 0, -1, +1)
 
-        self.progman.on_screen_size_change(self.scale, self.cols, self.rows, width, height)
+        self.vt.progman.on_screen_size_change(self.scale, self.cols, self.rows, width, height)
 
         self.adapt_vbuffer()
 
@@ -271,9 +287,6 @@ class ArtSciTerm:
         self.char_data = bytes()
         self.master_fd = None
 
-        self.vt = ArtSciVTerm(args[0].libvterm_path, 100, 100, self)
-        self.vt.lock = threading.Lock()
-        self.progman_lock = threading.Lock()
 
         self.program = self.factory.create_program(
                 open(os.path.join(self.src_path, "gl/term.vert.glsl")).read(),
@@ -288,9 +301,11 @@ class ArtSciTerm:
 
         self.font = ArtSciTermFont(self.src_path)
 
-        self.progman = ProgramManager(self.factory, self.width,
+        progman = ProgramManager(self.factory, self.width,
                                       self.height, self.font.char_width,
                                       self.font.char_height)
+
+        self.vt = ArtSciVTerm(progman, args[0].libvterm_path, 100, 100, self)
 
         self.buffer_processor = BufferProcessor()
         self.adapt_to_dim(self.width, self.height)
@@ -342,15 +357,12 @@ class ArtSciTerm:
         self.dirty = False
 
         self.program1['time'] = time_elapsed*5
-        # TODO .. look into vispy/gloo/wrappers.py to use vispy functions
         gl.glBlendFuncSeparate(gl.GL_ONE,  gl.GL_ONE,
                                gl.GL_ZERO, gl.GL_ONE_MINUS_SRC_ALPHA)
 
-        # self.window.clear()
-        with self.progman_lock:
-            if not self.altscreen:
-                for internal_id, prog_wrap in self.progman.prog_wraps.items():
-                    prog_wrap.draw(time_now=time_now, mouse=self.mouse)
+        if not self.altscreen:
+            for internal_id, prog_wrap in self.vt.progman.prog_wraps.items():
+                prog_wrap.draw(time_now=time_now, mouse=self.mouse)
 
         self.program.draw(self.program.GL_POINTS)
 
@@ -363,6 +375,9 @@ class ArtSciTerm:
 
     def process(self):
         """ Put text at (row,col) """
+        if self.vt.codes is None:
+            print("no codes")
+            return
 
         with self.vt.lock:
             buf = np.ctypeslib.as_array(self.vt.screen.contents.buffer, (self.rows*self.cols, ))
@@ -376,9 +391,8 @@ class ArtSciTerm:
         prog_id = -1
         codes = codes.copy()
         magic_rows = 1
-        with self.progman_lock:
-            for internal_id, prog_wrap in self.progman.prog_wraps.items():
-                prog_wrap.active = False
+        for internal_id, prog_wrap in self.vt.progman.prog_wraps.items():
+            prog_wrap.active = False
         while not self.altscreen:
             magic_pos = as_str.find(BufferProcessor.magic_string, magic_pos)
             if (magic_pos != -1):
@@ -394,9 +408,8 @@ class ArtSciTerm:
 
             if magic_pos == -1 or (prog_id != prev_prog_id and prev_prog_id != -1):
                 codes[first_magic_pos: first_magic_pos + self.cols * magic_rows] = 0
-                with self.progman_lock:
-                    to_update_prog_id = prog_id if magic_pos == -1 else prev_prog_id
-                    self.progman.set_prog_last_row(to_update_prog_id, first_magic_pos / self.cols + magic_rows)
+                to_update_prog_id = prog_id if magic_pos == -1 else prev_prog_id
+                self.vt.progman.set_prog_last_row(to_update_prog_id, first_magic_pos / self.cols + magic_rows)
                 first_magic_pos = magic_pos;
                 if magic_pos == -1:
                     break
@@ -464,11 +477,10 @@ class ArtSciTerm:
                         except Exception:
                             self.last_time = time_now
                             continue
+                        with self.vt.cmd_lock:
+                            self.vt.cmds.extend(cmds)
                         with self.vt.lock:
                             self.vt.push(buf)
-                        with self.progman_lock:
-                            for cmd in cmds:
-                                self.progman.process_cmd(cmd)
                         char_data = bytes()
                         self.dirty = True
                         self.update()

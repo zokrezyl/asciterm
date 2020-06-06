@@ -5,6 +5,7 @@ import msgpack
 import numpy as np
 import re
 import sys
+import threading
 
 from string import Template
 
@@ -37,7 +38,7 @@ def adapt_vertex_shader(vertex_shader):
     vertex_shader = Template(vertex_shader).substitute(
         vertex_shader_variables = VERTEX_SHADER_VARIABLES,
         vertex_shader_epilog = VERTEX_SHADER_EPILOG)
-    print("vertex_shader: \n", vertex_shader)
+    #print("vertex_shader: \n", vertex_shader)
 
     return vertex_shader
 
@@ -46,7 +47,7 @@ def adapt_fragment_shader(fragment_shader):
     fragment_shader = Template(fragment_shader).substitute(
             fragment_shader_variables = FRAGMENT_SHADER_VARIABLES,
             fragment_shader_prolog = FRAGMENT_SHADER_PROLOG)
-    print("fragment_shader:\n", fragment_shader)
+    #print("fragment_shader:\n", fragment_shader)
     return fragment_shader
 
 class ProgWrap:
@@ -148,12 +149,13 @@ class ProgWrap:
                 self.program['mousePos'] = (mouse[0] - self.viewport[0], mouse[1] - self.viewport[1])
                 self.program.draw(self.program.to_gl_constant(self.draw_mode))
             except RuntimeError as exc:
-                print("Cannot draw...: ", exc)
+                print("Program: cannot draw...: ", exc)
 
 
 
 class ProgramManager:
     def __init__(self, factory, screen_width, screen_height, char_width, char_height):
+        self.lock = threading.Lock()
         self.factory = factory
         self.scale = 0
         self.screen_rows = 0
