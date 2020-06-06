@@ -134,6 +134,8 @@ fragment1 = """
 
 class ArtSciTermFont:
     def __init__(self):
+        self.char_width = 6.0
+        self.char_height = 13.0
         regular = glumpy.data.get("6x13-regular.npy")
         italic = glumpy.data.get("6x13-italic.npy")
         bold  = glumpy.data.get("6x13-bold.npy")
@@ -201,8 +203,8 @@ class ArtSciTerm:
     def adapt_to_dim(self, width, height):
         self.mouse = (0, 0)
         self.width, self.height = width, height
-        self.cols = width  // int(self.char_width * self.scale)
-        self.rows = height // int(self.char_height * self.scale)
+        self.cols = width  // int(self.font.char_width * self.scale)
+        self.rows = height // int(self.font.char_height * self.scale)
         self.program["cols"] = self.cols
         with self.vt_lock:
             self.vt.resize(self.rows, self.cols)
@@ -237,8 +239,6 @@ class ArtSciTerm:
             print("arg szie has to be in form <width>x<height>, instead got {args[0].size}, using defaults {self.width}, {self.height}")
 
         self.scale = float(args[0].scale)
-        self.char_width = 6.0
-        self.char_height = 13.0
         self.start_time = time.time()
         self.queue = queue.Queue()
         self.args = args
@@ -260,7 +260,7 @@ class ArtSciTerm:
         self.font = ArtSciTermFont()
 
         self.progman = ProgramManager(self.factory, self.width,
-                self.height, self.char_width, self.char_height)
+                self.height, self.font.char_width, self.font.char_height)
 
         self.buffer_processor = BufferProcessor()
         self.adapt_to_dim(self.width, self.height)
@@ -271,8 +271,8 @@ class ArtSciTerm:
         self.program["tex_data"].wrapping = self.program.to_gl_constant('clamp_to_edge')
 
         self.program["tex_size"] = self.font.t_width, self.font.t_height
-        self.program["char_width"] = self.char_width
-        self.program["char_height"]= self.char_height
+        self.program["char_width"] = self.font.char_width
+        self.program["char_height"]= self.font.char_height
         self.program["cols"] = self.cols
         self.program["scale"]= self.scale
 
@@ -291,8 +291,8 @@ class ArtSciTerm:
         x1 = 2 * self.cursor_pos.col / self.cols - 1
         y1 = 1 - 2 * (self.cursor_pos.row + 0.7)/ self.rows
 
-        x2 = x1 - 2 * self.scale * self.char_width / self.width
-        y2 = y1 - 2 * self.scale * self.char_height / self.height
+        x2 = x1 - 2 * self.scale * self.font.char_width / self.width
+        y2 = y1 - 2 * self.scale * self.font.char_height / self.height
 
         self.cursor_position = [((3*x1 + x2)/4, y1), (x1, y2), (x2, y2), (x2, y1), (x1, y1)]
         self.handle_cursor_vbuffer()
