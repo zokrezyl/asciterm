@@ -87,8 +87,7 @@ class ArtSciTermGlumpy(ArtSciTerm):
         self._on_resize(width, height)
 
     def on_character(self, text):
-        if self.master_fd is not None:
-            os.write(self.master_fd, str.encode(text))
+        self.on_text(str.encode(text)))
 
     def adapt_vbuffer(self):
         self.vbuffer = self.vbuffer.view(gloo.VertexBuffer)
@@ -98,3 +97,6 @@ class ArtSciTermGlumpy(ArtSciTerm):
         app.quit()
         self.finish = True
 
+    def on_mouse_scroll(self, x, y, dx, dy):
+        print("mouse scroll ", x, y, dx, dy)
+        self.on_scroll(self, dx, dy)

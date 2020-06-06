@@ -93,13 +93,14 @@ VTERM_MAX_CHARS_PER_CELL = 6
 
 class VTermScreenCell_s(Structure):
     _fields_ = (
-            ('chars', c_int*VTERM_MAX_CHARS_PER_CELL),
+            ('chars', c_uint32*VTERM_MAX_CHARS_PER_CELL),
             ('width', c_char),
             ('attrs', VTermScreenCellAttrs_s),
-            ('fg', VTermColor_s),
-            ('bg', VTermColor_s),
+            ('fg', c_uint8*4),
+            ('bg', c_uint8*4),
     )
 
+VTermScreenCell_p = POINTER(VTermScreenCell_s)
 
 VTerm_p = c_void_p
 VTermState_p = c_void_p

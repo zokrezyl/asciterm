@@ -58,8 +58,7 @@ class ArtSciTermVispy(app.Canvas, ArtSciTerm):
         return gloo.Texture2D(data)
 
     def on_key_press(self, event):
-        os.write(self.master_fd, str.encode(event.text))
-        #self.update()
+        self.on_text(str.encode(event.text))
 
     def adapt_vbuffer(self):
         pass
@@ -76,6 +75,9 @@ class ArtSciTermVispy(app.Canvas, ArtSciTerm):
         self.update()
 
     def on_mouse_wheel(self, event):
+        print("on_mouse_wheel ", event.delta)
+        self.on_scroll(*event.delta)
+        return
         self.scale += event.delta[1]/10
         if self.scale < 0.5:
             self.scale = 0.5

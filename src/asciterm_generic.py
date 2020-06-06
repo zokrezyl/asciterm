@@ -10,7 +10,7 @@ import numpy as np
 from OpenGL import GL as gl
 from select import select
 
-from vterm import VTerm, VTermScreenCallbacks_s, VTermRect_s, VTermPos_s, VTermScreenCell_s
+from vterm import VTerm, VTermScreenCallbacks_s, VTermRect_s, VTermPos_s, VTermScreenCell_s, VTermScreenCell_p
 
 import queue
 
@@ -33,6 +33,7 @@ class ArtSciVTerm(VTerm):
         self.codes = None
         self.cmds = []
         self.altscreen = None
+        self.scroll = 0
         super().__init__(libvterm_path, rows, cols)
 
     def on_movecursor(self, pos, oldpos, visible, user):
@@ -49,8 +50,32 @@ class ArtSciVTerm(VTerm):
         for cmd in cmds:
             self.progman.process_cmd(cmd)
 
+    def prepare_buffer(self):
+        # TODO .. depending on the amount of scroll back, compose this buffer based on 
+        # scrollback and the real vt buffer
+        buf_orig = np.ctypeslib.as_array(self.screen.contents.buffer, (self.rows*self.cols, ))
+        buf = buf_orig.copy().reshape(self.rows, self.cols)
+        buf[self.scroll:] = buf[0: self.rows - self.scroll]
+        len_sb = len(self.sb)
+        print("len sb ", len_sb)
+        for row in range(self.scroll):
+            sb_info = self.sb[len_sb - self.scroll + row]
+            min_cols = min(sb_info[0], self.cols)
+            print("min cols ", min_cols, self.cols, sb_info[0])
+            print([a.chars[0] for a in sb_info[1]])
+            for col in range(min_cols):
+                buf[row][col]["chars"][0] = sb_info[1][col].chars[0]
+                #buf[row][col]["fg"] = sb_info[1][col].fg
+                #buf[row][col]["bg"] = sb_info[1][col].bg
+
+        self.buf = buf.reshape(self.rows * self.cols)
+
     def prepare_attributes(self):
-        self.buf = np.ctypeslib.as_array(self.screen.contents.buffer, (self.rows*self.cols, ))
+        try:
+            self.prepare_buffer()
+        except Exception as exc:
+            print("exception: ", exc)
+            return
         codes = self.buf["chars"][:, 0:1].reshape((self.rows*self.cols))
 
         as_str = codes.astype('b').tostring()
@@ -87,15 +112,16 @@ class ArtSciVTerm(VTerm):
             prev_prog_id = prog_id
         self.codes = np.searchsorted(self.font._codes, codes)
 
-    def on_damage(self, rect, user):
+    def recalc(self):
         self.process_cmd_queue()
         self.prepare_attributes()
+
+    def on_damage(self, rect, user):
+        self.recalc()
         return True
 
     def on_moverect(self, dest, src, user):
-        self.process_cmd_queue()
-        self.prepare_attributes()
-        return True
+        self.recalc()
         return True
 
     def on_set_term_title(self, title):
@@ -111,21 +137,28 @@ class ArtSciVTerm(VTerm):
             super().resize(rows, cols)
 
     def on_sb_pushline(self, cols, cells, user):
-        buf = create_string_buffer(cols * sizeof(VTermScreenCell_s))
-        memmove(buf, cells, cols * sizeof(cells.contents))
+        buf = (VTermScreenCell_s * cols)()
+        memmove(buf, cells, cols * sizeof(VTermScreenCell_s))
         self.sb.append((cols, buf))
         return True
 
     def on_sb_popline(self, cols, cells, user):
+        return False
         if len(self.sb) > 0:
             our_cols, buf = self.sb.pop(0)
             min_cols = min(cols, our_cols)
-            memmove(cells, buf, min_cols * sizeof(VTermScreenCell_s))
+            memmove(cells, buf, min_cols)
             for col in range(min_cols, cols):
                 cells[col].width = 1
             return True
         else:
             return False
+
+    def on_scroll(self, dx, dy):
+        self.scroll += int(dy)
+        if self.scroll < 0:
+            self.scroll = 0
+        self.scroll = min(self.scroll, len(self.sb))
 
 
 class ArtSciTerm:
@@ -310,4 +343,16 @@ class ArtSciTerm:
                         self.update()
                     if data is None:
                         break
+
+    def on_scroll(self, dx, dy):
+        # atm we ignore the amount, we care about the sign
+        # as glumpy and vispy (likely due to the backends) are reporting different values
+        self.vt.on_scroll(int(abs(dx)/(dx if dx != 0 else 1)), 
+                          int(abs(dy)/(dy if dy !=0 else 1)))
+        self.vt.recalc()
+        self.update()
+
+    def on_text(self, text):
+        self.vt.scroll = 0
+        os.write(self.master_fd, text)
 
