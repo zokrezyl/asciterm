@@ -8,10 +8,9 @@ import array
 import threading
 import numpy as np
 from OpenGL import GL as gl
-import glumpy
 from select import select
 
-from vterm import VTerm, VTermScreenCallbacks_s, VTermRect_s, VTermPos_s
+from vterm import VTerm, VTermScreenCallbacks_s, VTermRect_s, VTermPos_s, VTermScreenCell_s
 
 import queue
 
@@ -20,9 +19,150 @@ from progman import ProgramManager
 from font import ArtSciTermFont
 
 
+vertex = """
+#version 120
+
+// Uniforms
+// --------
+uniform sampler2D tex_data;
+uniform vec2 tex_size;
+uniform float char_width;
+uniform float char_height;
+//uniform float rows;
+uniform float cols;
+uniform float scale;
+//uniform vec4 foreground;
+//uniform vec4 background;
+//uniform vec2 selection;
+uniform mat4 projection;
+
+// Attributes
+// ----------
+attribute float pindex;
+attribute float gindex;
+attribute vec4 fg;
+attribute vec4 bg;
+
+
+// Varyings
+// --------
+varying vec4 v_fg;
+varying vec4 v_bg;
+varying vec2 v_texcoord;
+varying vec4 v_foreground;
+varying vec4 v_background;
+
+
+// Main
+// ----
+void main (void)
+{
+    // Compute char position from pindex
+    float x = mod(pindex, cols);
+    float y = floor(pindex/cols);
+    vec2 P = (vec2(x,y) * vec2(char_width, char_height)) * scale;
+    P += vec2(char_height, char_height)*scale/2.0;
+    P += vec2(2.0, 2.0);
+    gl_Position = projection*vec4(P, 0.0, 1.0);
+    gl_PointSize = char_height * scale ;
+
+    v_fg = fg.yzwx;
+    v_bg = bg.yzwx;
+
+    float n = tex_size.x/char_width;
+    x = 0.5 +  mod(gindex, n) * char_width;
+    y = 0.5 + floor(gindex/n) * char_height;
+    v_texcoord = vec2(x/tex_size.x, y/tex_size.y);
+}
+"""
+
+fragment = """
+#version 120
+
+// Uniforms
+// --------
+uniform sampler2D tex_data;
+uniform vec2 tex_size;
+uniform float char_width;
+uniform float char_height;
+//uniform float rows;
+uniform float cols;
+uniform float scale;
+//uniform vec2 selection;
+//uniform vec4 foreground;
+
+
+// Varyings
+// --------
+varying vec2 v_texcoord;
+//varying vec4 v_background;
+//varying vec4 v_foreground;
+varying vec4 v_fg;
+varying vec4 v_bg;
+
+
+// Main
+// ----
+void main(void)
+{
+    vec2 uv = floor(gl_PointCoord.xy * char_height);
+    if(uv.x > (char_width-1.0)) discard;
+    if(uv.y > (char_height-1.0)) discard;
+    float v = texture2D(tex_data, v_texcoord+uv/tex_size).r;
+    gl_FragColor = v * v_fg + (1.0-v) * v_bg;
+}
+"""
+
+vertex1 = """
+#version 120
+    uniform float scale;
+    attribute vec2 position;
+    void main()
+    {
+        //gl_Position = vec4(position, 0.0, 1)*scale;
+        gl_Position = vec4(position, 0.0, 1);
+    } """
+
+fragment1 = """
+#version 120
+    uniform vec4 color;
+    uniform float time;
+    void main()
+    {
+        gl_FragColor = vec4(1.0*sin(time), 0.7*cos(2*time), 0.7, 0.2);
+    } """
+
+vertex2 = """
+#version 120
+    attribute vec2 position;
+    attribute vec2 texcoord;
+
+    varying vec2 v_texcoord;
+    void main()
+    {
+        gl_Position = vec4(position, 0.0, 1.0);
+        v_texcoord = vec2(texcoord.y, texcoord.x);
+    } """
+
+fragment2 = """
+#version 120
+    uniform sampler2D texture;
+    varying vec2 v_texcoord;
+    void main()
+    {
+        //gl_FragColor.rgb = texture2D(tex_data, gl_FragCoord);
+        //gl_FragColor = vec4(1.0, 1.0, 1.0, 0.5);
+        gl_FragColor.xy = texture2D(texture, v_texcoord).yx;
+        gl_FragColor.a = 0.5;
+    } """
+
+
+from ctypes import create_string_buffer, sizeof, memmove
 class ArtSciVTerm(VTerm):
     def __init__(self, libvterm_path, rows, cols, parent):
+        self.sb = []
         self.parent = parent
+        self.codes = None
         super().__init__(libvterm_path, rows, cols)
 
     def on_movecursor(self, pos, oldpos, visible, user):
@@ -32,6 +172,15 @@ class ArtSciVTerm(VTerm):
         return True
 
     def on_damage(self, rect, user):
+        #print("on_damage")
+        buf = np.ctypeslib.as_array(self.screen.contents.buffer, (self.rows*self.cols, ))
+        self.codes = buf["chars"][:, 0:1].reshape((self.rows*self.cols))
+        return True
+
+    def on_moverect(self, dest, src, user):
+        buf = np.ctypeslib.as_array(self.screen.contents.buffer, (self.rows*self.cols, ))
+        self.codes = buf["chars"][:, 0:1].reshape((self.rows*self.cols))
+        #print("moverect")
         return True
 
     def on_set_term_title(self, title):
@@ -42,6 +191,36 @@ class ArtSciVTerm(VTerm):
         self.parent.altscreen = screen
         return True
 
+    def resize(self, rows, cols):
+        with self.lock:
+            super().resize(rows, cols)
+
+    def on_sb_pushline(self, cols, cells, user):
+        #print("pushline ", cols)
+        #print("pushline ", [getattr(cells[0], attr[0]) for attr in cells[0]._fields_])
+        buf = create_string_buffer(cols * sizeof(VTermScreenCell_s))
+        memmove(buf, cells, cols * sizeof(cells.contents))
+        self.sb.append((cols, buf))
+        #restore it from some internal buffer
+        return True
+
+    def on_sb_popline(self, cols, cells, user):
+        #print("popline ", cols, sizeof(VTermScreenCell_s))
+        if len(self.sb) > 0:
+        #TODO restore it from the internal buffer
+            our_cols, buf = self.sb.pop(0)
+            #print("we have to do ", our_cols, cols, sizeof(VTermScreenCell_s))
+            min_cols = min(cols, our_cols)
+            memmove(cells, buf, min_cols * sizeof(VTermScreenCell_s))
+            for col in range(min_cols, cols):
+                cells[col].width = 1
+            #print("popline ", [getattr(cells[0], attr[0]) for attr in cells[0]._fields_])
+            #print("done??")
+            return True
+        else:
+            #print("popline nothing to do...")
+            return False
+
 
 class ArtSciTerm:
 
@@ -51,8 +230,7 @@ class ArtSciTerm:
         self.cols = width // int(self.font.char_width * self.scale)
         self.rows = height // int(self.font.char_height * self.scale)
         self.program["cols"] = self.cols
-        with self.vt_lock:
-            self.vt.resize(self.rows, self.cols)
+        self.vt.resize(self.rows, self.cols)
         if self.master_fd:
             buf = array.array('h', [self.rows, self.cols, 0, 0])
             fcntl.ioctl(self.master_fd, termios.TIOCSWINSZ, buf)
@@ -94,7 +272,7 @@ class ArtSciTerm:
         self.master_fd = None
 
         self.vt = ArtSciVTerm(args[0].libvterm_path, 100, 100, self)
-        self.vt_lock = threading.Lock()
+        self.vt.lock = threading.Lock()
         self.progman_lock = threading.Lock()
 
         self.program = self.factory.create_program(
@@ -186,9 +364,10 @@ class ArtSciTerm:
     def process(self):
         """ Put text at (row,col) """
 
-        with self.vt_lock:
+        with self.vt.lock:
             buf = np.ctypeslib.as_array(self.vt.screen.contents.buffer, (self.rows*self.cols, ))
             codes = buf["chars"][:, 0:1].reshape((self.rows*self.cols))
+            codes = self.vt.codes
 
         as_str = codes.astype('b').tostring()
         magic_pos = 0
@@ -285,7 +464,7 @@ class ArtSciTerm:
                         except Exception:
                             self.last_time = time_now
                             continue
-                        with self.vt_lock:
+                        with self.vt.lock:
                             self.vt.push(buf)
                         with self.progman_lock:
                             for cmd in cmds:

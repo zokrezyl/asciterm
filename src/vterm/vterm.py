@@ -93,7 +93,7 @@ VTERM_MAX_CHARS_PER_CELL = 6
 
 class VTermScreenCell_s(Structure):
     _fields_ = (
-            ('chars', c_char*VTERM_MAX_CHARS_PER_CELL),
+            ('chars', c_int*VTERM_MAX_CHARS_PER_CELL),
             ('width', c_char),
             ('attrs', VTermScreenCellAttrs_s),
             ('fg', VTermColor_s),
@@ -144,6 +144,9 @@ class VTermRect_s(Structure):
         ('end_row', c_int),
         ('start_col', c_int),
         ('end_col', c_int))
+
+    def __repr__(self):
+        return f"{{start_row={self.start_row}, end_row={self.end_row}, start_col={self.start_col}, end_col={self.end_col}}}"
 
 User_p = py_object
 VTermValue_p = c_void_p
@@ -222,6 +225,9 @@ def get_functions(lib):
                 ('vt', VTerm_p),
                 ('bytes', POINTER(c_char)),
                 ('size', c_size_t),
+        )),
+        vterm_screen_flush_damage=(None, (
+                ('screen', VTermScreen_p),
         )),
         vterm_screen_get_cell=(c_int, (
                 ('screen', VTermScreen_p),
@@ -304,6 +310,8 @@ class VTerm(object):
         return self.find_in_ld_cache()
 
     def __init__(self, libvterm_path, rows, cols):
+        self.rows = rows  # little redundant but is fine
+        self.cols = cols
         # TODO .. implement a mechanism to find the right lib on the system
         # lib = "/usr/lib/x86_64-linux-gnu/libvterm.so.0.0.0"
 
@@ -321,14 +329,15 @@ class VTerm(object):
         self.functions.vterm_screen_reset(self.screen, int(bool(True)))
 
         self.callbacks = VTermScreenCallbacks_s(
-            #damage=VTermScreenCallbacks_s.damage_f(self._on_damage),
+            damage=VTermScreenCallbacks_s.damage_f(self._on_damage),
+            #damage=VTermScreenCallbacks_s.damage_f(0),
             movecursor=VTermScreenCallbacks_s.movecursor_f(self._on_movecursor),
-            moverect=VTermScreenCallbacks_s.moverect_f(0),
+            moverect=VTermScreenCallbacks_s.moverect_f(self._on_moverect),
             settermprop=VTermScreenCallbacks_s.settermprop_f(self._on_settermprop),
             bell=VTermScreenCallbacks_s.bell_f(0),
-            resize=VTermScreenCallbacks_s.resize_f(0),
-            sb_pushline=VTermScreenCallbacks_s.sb_pushline_f(0),
-            sb_popline=VTermScreenCallbacks_s.sb_popline_f(0))
+            #resize=VTermScreenCallbacks_s.resize_f(self._on_resize),
+            sb_pushline=VTermScreenCallbacks_s.sb_pushline_f(self._on_sb_pushline),
+            sb_popline=VTermScreenCallbacks_s.sb_popline_f(self._on_sb_popline))
 
         self.functions.vterm_screen_set_callbacks(self.screen, self.callbacks, None)
         self.functions.vterm_screen_enable_altscreen(self.screen, 1)
@@ -339,11 +348,9 @@ class VTerm(object):
     def _on_damage(self, rect, user):
         return self.on_damage(rect, user)
 
-    def __on_damage(self, rect, user):
-        return int(True)
 
     def _on_moverect(self, dest, src, user):
-        return int(True)
+        return self.on_moverect(dest, src, user)
 
     def _on_movecursor(self, pos, oldpos, visible, user):
         return self.on_movecursor(pos, oldpos, visible, user)
@@ -368,18 +375,21 @@ class VTerm(object):
     def _on_sb_pushline(self, cols, cells, user):
         # TODO .. implement scrollback
         # save the cells into internal buffer
-        return int(True)
+        return self.on_sb_pushline(cols, cells, user)
 
     def _on_sb_popline(self, cols, cells, user):
         # TODO .. give back lines from buffer
-        return int(False)
+        return self.on_sb_popline(cols, cells, user)
 
     def push(self, data):
         if isinstance(data, str):
             data = data.encode('utf-8')
-        return self.functions.vterm_input_write(self.vt, data, len(data))
+        self.functions.vterm_input_write(self.vt, data, len(data))
+        self.functions.vterm_screen_flush_damage(self.screen)
 
     def resize(self, rows, cols):
+        self.rows = rows
+        self.cols = cols
         self.functions.vterm_set_size(self.vt, rows, cols)
 
     def get_cursor_pos(self):
