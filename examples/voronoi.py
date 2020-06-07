@@ -36,7 +36,7 @@ void main() {
 
     // Iterate through the points positions
     for (int i = 0; i < 5; i++) {
-        float dist = distance(st, point[i]);
+        float dist = (1.5 + sin(i*time)) * distance(st, point[i]);
 
         // Keep the closer distance
         m_dist = min(m_dist, dist);

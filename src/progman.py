@@ -39,7 +39,6 @@ def adapt_vertex_shader(vertex_shader):
         vertex_shader_variables = VERTEX_SHADER_VARIABLES,
         vertex_shader_epilog = VERTEX_SHADER_EPILOG)
     
-    print(vertex_shader)
     return vertex_shader
 
 def adapt_fragment_shader(fragment_shader):
@@ -88,7 +87,6 @@ class ProgWrap:
 
         for key, value in attributes.items():
             try:
-                print(type(value))
                 key = key.decode('ascii')
                 self.program[key] = value
             except IndexError as exc:
