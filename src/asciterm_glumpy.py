@@ -77,7 +77,6 @@ class ArtSciTermGlumpy(ArtSciTerm):
 
     def update(self):
         pass
-        #self.on_draw()
 
     def on_draw(self, event):
         self.window.clear()
@@ -85,6 +84,9 @@ class ArtSciTermGlumpy(ArtSciTerm):
 
     def on_resize(self, width, height):
         self._on_resize(width, height)
+
+    def on_key_press(self, key, modifiers):
+        self.on_ctrl_pressed(modifiers & app.window.key.MOD_CTRL)
 
     def on_character(self, text):
         self.on_text(str.encode(text))
@@ -98,5 +100,4 @@ class ArtSciTermGlumpy(ArtSciTerm):
         self.finish = True
 
     def on_mouse_scroll(self, x, y, dx, dy):
-        print("mouse scroll ", x, y, dx, dy)
-        self.on_scroll(self, dx, dy)
+        self.on_scroll(dx, dy)

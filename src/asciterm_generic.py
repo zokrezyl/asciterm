@@ -189,7 +189,7 @@ class ArtSciTerm:
     def __init__(self, args):
 
         self.src_path = os.path.dirname(os.path.abspath(__file__))
-
+        self.ctrl_pressed = False
         self.altscreen = False
         self.width = 1000
         self.height = 1000
@@ -247,6 +247,7 @@ class ArtSciTerm:
 
     def _on_resize(self, width, height):
         self.adapt_to_dim(width, height)
+        self.vt.recalc()
 
     def on_cursor_move(self):
         x1 = 2 * self.cursor_pos.col / self.cols - 1
@@ -344,14 +345,27 @@ class ArtSciTerm:
                         break
 
     def on_scroll(self, dx, dy):
-        # atm we ignore the amount, we care about the sign
-        # as glumpy and vispy (likely due to the backends) are reporting different values
-        self.vt.on_scroll(int(abs(dx)/(dx if dx != 0 else 1)), 
-                          int(abs(dy)/(dy if dy !=0 else 1)))
-        self.vt.recalc()
+        if self.ctrl_pressed:
+            print("key pressed!!!")
+            self.scale += dy/20
+            if self.scale < 0.5:
+                self.scale = 0.5
+            self.adapt_to_dim(self.width, self.height)
+            self.program["scale"] = self.scale
+            self.vt.recalc()
+        else:
+            # atm we ignore the amount, we care about the sign
+            # as glumpy and vispy (likely due to the backends) are reporting different values
+            self.vt.on_scroll(int(abs(dx)/(dx if dx != 0 else 1)),
+                            int(abs(dy)/(dy if dy != 0 else 1)))
+            self.vt.recalc()
         self.update()
 
     def on_text(self, text):
         self.vt.scroll = 0
         os.write(self.master_fd, text)
 
+    def on_ctrl_pressed(self, on):
+        # this is a temp naive implementation for the polymorfism
+        # between glumpy and vispy for key pressed
+        self.ctrl_pressed = on

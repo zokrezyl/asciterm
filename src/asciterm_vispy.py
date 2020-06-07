@@ -1,9 +1,10 @@
 from asciterm_generic import ArtSciTerm
 from vispy import gloo, app, util
-import os
+
 
 class Null:
     pass
+
 
 class ArtSciTermVispyProgram(gloo.Program):
     def get_uniforms(self):
@@ -17,13 +18,12 @@ class ArtSciTermVispyProgram(gloo.Program):
         attributes = []
         for variable in self.variables:
             if variable.kind == 'attribute':
-               attributesuniforms.append((variable[2], variable[1]))
+                attributes.append((variable[2], variable[1]))
 
         return attributes
 
     def to_gl_constant(self, txt):
         return txt
-
 
     GL_CLAMP = "clamp_to_edge"
     GL_POINTS = "points"
@@ -36,8 +36,6 @@ class ArtSciTermVispy(app.Canvas, ArtSciTerm):
         setattr(self.factory, "create_program", ArtSciTermVispyProgram)
         setattr(self.factory, "ortho",  util.transforms.ortho)
 
-        #self.gloo = gloo
-        #self._app = app
         app.Canvas.__init__(self)
         ArtSciTerm.__init__(self, args)
 
@@ -76,15 +74,7 @@ class ArtSciTermVispy(app.Canvas, ArtSciTerm):
 
     def on_mouse_wheel(self, event):
         self.on_scroll(*event.delta)
-        return  # TODO ... implement the scale when shift is pressed
-        self.scale += event.delta[1]/10
-        if self.scale < 0.5:
-            self.scale = 0.5
-        self.adapt_to_dim(self.width, self.height)
-        self.program["scale"]= self.scale
-        #self.program1["scale"]= self.scale
-        #self.on_cursor_move()
-        self.dirty = True
+        return
 
     def on_draw(self, event):
         gloo.clear('black')
