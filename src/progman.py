@@ -15,10 +15,10 @@ uniform vec4 normViewport;
 """
 
 VERTEX_SHADER_EPILOG = """
-gl_Position = vec4(
-    normViewport.x + (1 + gl_Position.x) * (normViewport.z/2.0),
-    normViewport.y + (1 + gl_Position.y) * (normViewport.w/2.0),
-    0.0, 1.0);
+    gl_Position = vec4(
+        normViewport.x + (1 + gl_Position.x) * (normViewport.z/2.0),
+        normViewport.y + (1 + gl_Position.y) * (normViewport.w/2.0),
+        0.0, 1.0);
 """
 
 FRAGMENT_SHADER_VARIABLES = """
@@ -38,7 +38,8 @@ def adapt_vertex_shader(vertex_shader):
     vertex_shader = Template(vertex_shader).substitute(
         vertex_shader_variables = VERTEX_SHADER_VARIABLES,
         vertex_shader_epilog = VERTEX_SHADER_EPILOG)
-
+    
+    print(vertex_shader)
     return vertex_shader
 
 def adapt_fragment_shader(fragment_shader):
@@ -87,6 +88,7 @@ class ProgWrap:
 
         for key, value in attributes.items():
             try:
+                print(type(value))
                 key = key.decode('ascii')
                 self.program[key] = value
             except IndexError as exc:

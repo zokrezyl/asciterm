@@ -87,7 +87,7 @@ class ArtSciTermGlumpy(ArtSciTerm):
         self._on_resize(width, height)
 
     def on_character(self, text):
-        self.on_text(str.encode(text)))
+        self.on_text(str.encode(text))
 
     def adapt_vbuffer(self):
         self.vbuffer = self.vbuffer.view(gloo.VertexBuffer)

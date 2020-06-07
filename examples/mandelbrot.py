@@ -70,8 +70,8 @@ void main()
 
 def main():
     attributes = {
-        'position': [(-1,-1), (-1, 1), ( 1,-1), ( 1, 1)],
-        'texcoord': [( -1, 1), ( -1, -1), ( 1, 1), ( 1, -1)]}
+        'position': [(-1, -1), (-1, 1), (1, -1), (1, 1)],
+        'texcoord': [(-1, 1), (-1, -1), (1, 1), (1, -1)]}
 
     print("first we just print some lines...\r\n"  * 5)
     print(envelope(

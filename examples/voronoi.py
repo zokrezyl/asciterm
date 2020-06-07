@@ -60,7 +60,7 @@ def main():
         title="voronoi",
         cmd="create",
         draw_mode="triangle_strip",
-        start_col = 10,
+        start_col=10,
         rows=35,
         cols=80,
         vertex_shader=vertex_shader,
