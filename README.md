@@ -46,6 +46,8 @@ Basically ArtSciTerm:
 * renders libvterm on OpenGL canvas, by sending indexes in a 2D texture of the font glyphs when the terminal state changes
 * the "pty" reader, before sending the text to libvterm for processing, pre-processes it and extracts the special ANSI escapes sequences that are carrying special ArtSciTerm commands for creating/updating/deleting OpenGL programs (shaders, their attributes and uniforms). After removing the special ANSI sequences, special "placeholder" strings are injected which whill be recognized in the libvterm rendered text as being placeholders for the OpenGL programs. When finally rendered on OpenGL canvas, this placeholder text is removed, the rest of the text is displayed, and on top of it the program is rendered.
 
+For further details please see design.md
+
 ## Future
 * is bright
 
