@@ -86,7 +86,12 @@ class ArtSciTermGlumpy(ArtSciTerm):
         self._on_resize(width, height)
 
     def on_key_press(self, key, modifiers):
-        self.on_ctrl_pressed(modifiers & app.window.key.MOD_CTRL)
+        if modifiers & app.window.key.MOD_CTRL:
+            self.on_ctrl_key(True)
+
+    def on_key_release(self, key, modifiers):
+        if not modifiers & app.window.key.MOD_CTRL:
+            self.on_ctrl_key(False)
 
     def on_character(self, text):
         self.on_text(str.encode(text))

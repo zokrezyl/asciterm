@@ -165,8 +165,10 @@ class ArtSciTerm:
     def adapt_to_dim(self, width, height):
         self.mouse = (0, 0)
         self.width, self.height = width, height
-        self.cols = width // int(self.vt.font.char_width * self.scale)
-        self.rows = height // int(self.vt.font.char_height * self.scale)
+        #self.cols = width // int(self.vt.font.char_width * self.scale)
+        #self.rows = height // int(self.vt.font.char_height * self.scale)
+        self.cols = int(width / (self.vt.font.char_width * self.scale))
+        self.rows = int(height /(self.vt.font.char_height * self.scale))
         self.program["cols"] = self.cols
         self.vt.resize(self.rows, self.cols)
         if self.master_fd:
@@ -346,10 +348,12 @@ class ArtSciTerm:
 
     def on_scroll(self, dx, dy):
         if self.ctrl_pressed:
-            print("key pressed!!!")
-            self.scale += dy/20
-            if self.scale < 0.5:
-                self.scale = 0.5
+            if dy > 0:
+                self.scale *= 1.01
+            else:
+                self.scale /= 1.01
+            if self.scale < 0.1:
+                self.scale = 0.1
             self.adapt_to_dim(self.width, self.height)
             self.program["scale"] = self.scale
             self.vt.recalc()
@@ -365,7 +369,7 @@ class ArtSciTerm:
         self.vt.scroll = 0
         os.write(self.master_fd, text)
 
-    def on_ctrl_pressed(self, on):
+    def on_ctrl_key(self, on):
         # this is a temp naive implementation for the polymorfism
         # between glumpy and vispy for key pressed
         self.ctrl_pressed = on

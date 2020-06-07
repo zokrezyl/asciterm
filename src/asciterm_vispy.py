@@ -57,6 +57,12 @@ class ArtSciTermVispy(app.Canvas, ArtSciTerm):
 
     def on_key_press(self, event):
         self.on_text(str.encode(event.text))
+        if event.key == "Control":
+            self.on_ctrl_key(True)
+
+    def on_key_release(self, event):
+        if event.key == "Control":
+            self.on_ctrl_key(False)
 
     def adapt_vbuffer(self):
         pass

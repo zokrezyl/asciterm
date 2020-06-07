@@ -164,6 +164,7 @@ class ProgramManager:
         self.prog_wraps = {}
 
     def process_cmd(self, cmd):
+        print("process cmd")
         prog_wrap = ProgWrap(self.factory, cmd, self)
         if prog_wrap.is_sane:
             self.prog_wraps[cmd["internal_id"]] = prog_wrap
@@ -179,6 +180,7 @@ class ProgramManager:
             program.update_viewport()
 
     def set_prog_last_row(self, internal_id, row):
+        print("last row ", row)
         program = self.prog_wraps[internal_id]
         program.last_row = row
         program.update_viewport()
