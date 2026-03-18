@@ -1,4 +1,4 @@
-# Few years later the modern version started it's journely:
+# Few years later the modern version started it's journey:
 
 * https://github.com/zokrezyl/yetty
 
